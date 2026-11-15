@@ -35,6 +35,7 @@ class BaseStationSecurityTests(unittest.TestCase):
     def test_unknown_route_and_wrong_token_fail_closed(self):
         clients = {"uplink": {"token": TOKEN, "capabilities": ["status.read"]}}
         self.assertEqual(authorize_client(clients, "B" * 43, "GET", "/ping"), (None, False, "auth_denied"))
+        self.assertEqual(authorize_client(clients, "é" * 43, "GET", "/ping"), (None, False, "auth_denied"))
         self.assertEqual(authorize_client(clients, TOKEN, "DELETE", "/ping"), (None, False, "route_denied"))
         self.assertEqual(authorize_client({}, TOKEN, "GET", "/ping"), (None, False, "auth_denied"))
 
