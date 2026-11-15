@@ -75,6 +75,11 @@ except ImportError:
 
 import webbrowser
 
+try:
+    from daemon_security import authorize_client, valid_client_registry
+except ImportError:
+    from assets.basestation.daemon_security import authorize_client, valid_client_registry
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # §2  CONSTANTS & PALETTE
@@ -89,6 +94,7 @@ CONFIG_FILE = CONFIG_DIR / "profiles.json"
 DAEMON_CFG = CONFIG_DIR / "daemon.json"
 INBOX_FILE = CONFIG_DIR / "inbox.jsonl"
 OUTBOX_FILE = CONFIG_DIR / "outbox.json"
+DAEMON_AUDIT_FILE = CONFIG_DIR / "daemon-audit.jsonl"
 
 CONSOLE_APP_DIR = Path(__file__).resolve().parent / "console_app"
 CONSOLE_APP_REMOTE = "/mnt/mmc/MUOS/application/VOID_Uplink"
@@ -533,12 +539,22 @@ class SSHManager:
 
 class DaemonStore:
     def __init__(self):
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        self.cfg = {"port": 31337, "pc_name": "", "token": ""}
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
+        try:
+            os.chmod(CONFIG_DIR, 0o700)
+        except OSError:
+            pass
+        self.cfg = {"port": 31337, "pc_name": "", "clients": {}}
         self._lock = threading.Lock()
         if DAEMON_CFG.exists():
             try:
-                self.cfg.update(json.loads(DAEMON_CFG.read_text(encoding="utf-8")))
+                loaded = json.loads(DAEMON_CFG.read_text(encoding="utf-8"))
+                if isinstance(loaded, dict):
+                    self.cfg.update(loaded)
+                try:
+                    os.chmod(DAEMON_CFG, 0o600)
+                except OSError:
+                    pass
             except Exception:
                 pass
 
@@ -574,6 +590,32 @@ class DaemonStore:
             with open(INBOX_FILE, "a", encoding="utf-8") as f:
                 f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
+    def audit_event(self, event, route, remote):
+        record = {
+            "ts": datetime.now().isoformat(timespec="seconds"),
+            "event": str(event)[:40],
+            "route": str(route)[:80],
+            "remote": str(remote)[:64],
+        }
+        payload = (json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
+        flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+        with self._lock:
+            fd = os.open(str(DAEMON_AUDIT_FILE), flags, 0o600)
+            try:
+                try:
+                    os.fchmod(fd, 0o600)
+                except OSError:
+                    pass
+                view = memoryview(payload)
+                while view:
+                    written = os.write(fd, view)
+                    if written <= 0:
+                        raise OSError("short audit write")
+                    view = view[written:]
+            finally:
+                os.close(fd)
+
 
 def make_daemon_handler(store):
     class Handler(BaseHTTPRequestHandler):
@@ -582,18 +624,23 @@ def make_daemon_handler(store):
         def log_message(self, fmt, *args):
             pass
 
-        def _auth_ok(self):
-            token = store.cfg.get("token", "")
-            if not token:
-                return True
-            return self.headers.get("X-SPDW-Token", "") == token
+        def _auth_ok(self, method, path):
+            _client_id, allowed, reason = authorize_client(
+                store.cfg.get("clients", {}),
+                self.headers.get("X-SPDW-Token", ""),
+                method,
+                path,
+            )
+            if not allowed:
+                remote = self.client_address[0] if self.client_address else "unknown"
+                store.audit_event(reason, path, remote)
+            return allowed
 
         def _json(self, obj, code=200):
             raw = json.dumps(obj, ensure_ascii=False).encode("utf-8")
             self.send_response(code)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(raw)))
-            self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(raw)
 
@@ -610,9 +657,9 @@ def make_daemon_handler(store):
                 return {}
 
         def do_GET(self):
-            if not self._auth_ok():
-                return self._json({"error": "unauthorized"}, 401)
             path = urllib.parse.urlparse(self.path).path
+            if not self._auth_ok("GET", path):
+                return self._json({"error": "unauthorized or capability denied"}, 403)
             if path == "/ping":
                 self._json({"ok": True,
                             "name": store.cfg.get("pc_name") or socket.gethostname(),
@@ -624,14 +671,15 @@ def make_daemon_handler(store):
                 self._json({"error": "not found"}, 404)
 
         def do_POST(self):
-            if not self._auth_ok():
-                return self._json({"error": "unauthorized"}, 401)
             path = urllib.parse.urlparse(self.path).path
+            if not self._auth_ok("POST", path):
+                return self._json({"error": "unauthorized or capability denied"}, 403)
             data = self._body()
             if path == "/notify":
                 title = data.get("title", "Console")
                 body = data.get("body", "")
                 store.inbox_push(title, body)
+                store.audit_event("state_change", path, self.client_address[0])
                 print("[{}] NOTIFICATION from console -> {}: {}".format(
                     datetime.now().isoformat(timespec="seconds"), title, body), flush=True)
                 self._json({"ok": True})
@@ -641,6 +689,7 @@ def make_daemon_handler(store):
                 if not title:
                     return self._json({"error": "title required"}, 400)
                 store.outbox_push(title, body)
+                store.audit_event("state_change", path, self.client_address[0])
                 self._json({"ok": True})
             else:
                 self._json({"error": "not found"}, 404)
@@ -665,10 +714,13 @@ class EmbeddedDaemon:
         if self.is_running():
             return True
         try:
+            if not valid_client_registry(self.store.cfg.get("clients", {})):
+                print("[DAEMON] Refusing to start: no valid paired-client capability registry is configured.", flush=True)
+                return False
             self.store.cfg["port"] = self.port
             handler = make_daemon_handler(self.store)
             ThreadingHTTPServer.allow_reuse_address = True
-            self.httpd = ThreadingHTTPServer(("0.0.0.0", self.port), handler)
+            self.httpd = ThreadingHTTPServer(("127.0.0.1", self.port), handler)
             self._thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
             self._thread.start()
             return True
@@ -2542,7 +2594,9 @@ class VOIDBaseStation(tk.Tk):
         if self.cfg.uplink().get("daemon_autostart"):
             if self.daemon.start():
                 self._daemon_started_by_us = True
-                self.log("Daemon auto-started on port {}".format(self.daemon.port), "ok")
+                self.log("Daemon auto-started on loopback port {}".format(self.daemon.port), "ok")
+            else:
+                self.log("Local daemon disabled: configure a valid paired-client capability registry first.", "warn")
 
         # Auto-scan network at startup
         self.after(1200, self._start_auto_scan)
@@ -3133,8 +3187,10 @@ Tabs are selectable via click or shortcut."""
 
         if self.daemon.start():
             self._daemon_started_by_us = True
-            self.log("Daemon started on port {}".format(self.daemon.port), "ok")
+            self.log("Daemon started on loopback port {}".format(self.daemon.port), "ok")
             opened += 1
+        else:
+            self.log("Local daemon disabled: configure a valid paired-client capability registry first.", "warn")
 
         self.log("Quick connect launched on {} service(s)/system(s)".format(opened), "ok")
 
