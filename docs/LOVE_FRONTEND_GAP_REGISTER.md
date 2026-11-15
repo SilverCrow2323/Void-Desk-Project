@@ -41,6 +41,27 @@
 
 These changes are implemented on the draft branch only. Passing source tests or screenshots does not establish that they work correctly on RG35XX-H hardware.
 
+## Desktop keyboard contract
+
+The desktop LÖVE frontend now uses the same logical keyboard actions as the
+Pygame reference bridge:
+
+| Keyboard | Action |
+|---|---|
+| Arrow keys | D-pad |
+| Enter / A | A / confirm |
+| Escape / B | B / back |
+| X / Y | X / Y |
+| 1 / 2 / 3 / 4 | L1 / L2 / R2 / R1 |
+| Q / E | L3 / R3 |
+| F8 / F9 / M | Select / Start / Menu |
+
+Escape is deliberately **B/back**, not Menu; M remains the Menu key. The
+contract is locked by `tests/test_love_input_map.lua` and runs in the native
+LÖVE integration CI. This is a desktop keyboard contract, not proof of
+handheld controller behavior; the RG35XX-H input journey still requires
+physical validation.
+
 ## Hidden destinations
 
 These entries exist in the NEXUS catalogue but are hidden and must not be advertised as active LÖVE features until their routes, scenes, capabilities, tests and captures are complete:
