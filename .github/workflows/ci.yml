@@ -146,6 +146,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/voiddesk/data/visual-captures"
           VOIDDESK_APP_DIR="$RUNNER_TEMP/voiddesk" luajit tests/test_love_core.lua
+          luajit tests/test_love_input_map.lua
       - name: Capture every registered LÖVE screen
         env:
           LIBGL_ALWAYS_SOFTWARE: "1"
