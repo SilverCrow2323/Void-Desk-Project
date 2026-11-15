@@ -5,7 +5,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "assets" / "basestation"))
 
-from daemon_security import authorize_client, valid_client_registry, valid_token
+from daemon_security import authorize_client, valid_client_registry, valid_token  # noqa: E402
 
 
 TOKEN = "A" * 43
