@@ -678,8 +678,9 @@ def make_daemon_handler(store):
             if path == "/notify":
                 title = data.get("title", "Console")
                 body = data.get("body", "")
+                store.audit_event("state_change_attempt", path, self.client_address[0])
                 store.inbox_push(title, body)
-                store.audit_event("state_change", path, self.client_address[0])
+                store.audit_event("state_change_succeeded", path, self.client_address[0])
                 print("[{}] NOTIFICATION from console -> {}: {}".format(
                     datetime.now().isoformat(timespec="seconds"), title, body), flush=True)
                 self._json({"ok": True})
@@ -688,8 +689,9 @@ def make_daemon_handler(store):
                 body = data.get("body", "")
                 if not title:
                     return self._json({"error": "title required"}, 400)
+                store.audit_event("state_change_attempt", path, self.client_address[0])
                 store.outbox_push(title, body)
-                store.audit_event("state_change", path, self.client_address[0])
+                store.audit_event("state_change_succeeded", path, self.client_address[0])
                 self._json({"ok": True})
             else:
                 self._json({"error": "not found"}, 404)
