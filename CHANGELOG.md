@@ -27,6 +27,8 @@ This file records user-visible changes by release. The next candidate is documen
 | [#2](https://github.com/SilverCrow2323/Void-Desk-Project/issues/2) | Bluetooth activity could stall the NEXUS animation and delay controller input | Host status collection now runs in a single background worker. The render path reads a cached snapshot and never waits for `hciconfig` or `bluetoothctl` to respond. | Automated regression tests added; RG35XXSP confirmation still required |
 | [#2](https://github.com/SilverCrow2323/Void-Desk-Project/issues/2) | Device power-off could leave the RG35XXSP powered with its LED off | The muOS shutdown path now hands the request back to `mux_launch.sh`; the launcher stops the local service, runs `sync`, then tries forced power-off and device power-off fallbacks. | Shell and Python checks can validate the hand-off; physical RG35XXSP test still required |
 
+- Kept the legacy `xfce_launch` bridge action backward-compatible on muOS by delegating to the same marker-based `session_launch` hand-off; added a regression test proving the pending marker and selected desktop are written before the frontend exits.
+
 ### Documentation and maintenance
 
 - Clarified that NetSurf, Falkon and Dillo are optional browsers inside the XFCE desktop image, while `qtWebBrowser` is a separate third-party muOS application.

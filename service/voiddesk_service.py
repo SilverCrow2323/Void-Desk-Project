@@ -2351,13 +2351,11 @@ def _tail_log(path, n=12):
 def h_xfce_launch(args):
     """Launch XFCE on PC inside Xephyr. Robust against slow first start."""
     if IS_DEVICE:
-        # bin/xfce_launch.sh takes over the console's framebuffer/X for a
-        # full session hand-off (like mux_launch.sh choosing py vs love),
-        # which is not something a background JSON bridge call can do
-        # safely. Previously this silently reported fake success instead.
-        return {"ok": False,
-                "error": "device session hand-off not wired yet (needs "
-                         "mux_launch.sh integration, see bin/xfce_launch.sh)"}
+        # Keep this legacy bridge route compatible with the current
+        # marker-based hand-off. The service never takes the display itself:
+        # h_session_launch asks the owning mux_launch.sh process to quit the
+        # frontend, run xfce_launch.sh, then relaunch the selected engine.
+        return h_session_launch({"id": "xfce"})
 
     import shutil, subprocess, time, os
     if not shutil.which("startxfce4"):

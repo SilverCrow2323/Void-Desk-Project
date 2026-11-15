@@ -619,3 +619,21 @@ def test_text_editor_service_handler_map_and_workspace_confinement(tmp_path, mon
     assert service.HANDLERS["text_delete"] is service.h_text_delete
     (tmp_path / "Texts").symlink_to(tmp_path / "outside", target_is_directory=True)
     assert service.h_text_list({})["ok"] is False
+
+
+def test_legacy_xfce_launch_on_device_uses_the_safe_session_handoff(tmp_path, monkeypatch):
+    service = load_service()
+    data = tmp_path / "data"
+    data.mkdir()
+    monkeypatch.setattr(service, "IS_DEVICE", True)
+    monkeypatch.setattr(service, "DATA", data)
+    monkeypatch.setattr(service, "CFG", data / "desk_config.json")
+    (data / service.ENV_MARKERS["xfce"]).write_text("installed", encoding="utf-8")
+
+    result = service.h_xfce_launch({})
+
+    assert result["ok"] is True
+    assert result["handoff"] is True
+    assert (data / ".pending_session").read_text(encoding="utf-8") == "xfce"
+    config = json.loads((data / "desk_config.json").read_text(encoding="utf-8"))
+    assert config["desk_env"] == "xfce"
