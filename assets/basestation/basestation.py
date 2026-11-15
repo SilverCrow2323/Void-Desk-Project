@@ -605,7 +605,7 @@ class DaemonStore:
             try:
                 try:
                     os.fchmod(fd, 0o600)
-                except OSError:
+                except (AttributeError, OSError):
                     pass
                 view = memoryview(payload)
                 while view:
