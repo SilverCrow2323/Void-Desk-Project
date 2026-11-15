@@ -48,7 +48,7 @@ def authorize_client(clients: object, supplied_token: object, method: str, path:
     required = ROUTE_CAPABILITIES.get((str(method).upper(), str(path)))
     if required is None:
         return None, False, "route_denied"
-    if not valid_client_registry(clients) or not isinstance(supplied_token, str):
+    if not valid_client_registry(clients) or not valid_token(supplied_token):
         return None, False, "auth_denied"
     for client_id, record in clients.items():
         if hmac.compare_digest(record["token"], supplied_token):
