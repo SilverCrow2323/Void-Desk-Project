@@ -145,7 +145,7 @@ QWASAR Link responsibilities:
 
 Input Leap is a candidate keyboard/mouse sharing backend, not the remote-display implementation. Its endpoint must be available on both participating machines; the QWASAR Link wizard must probe platform support and offer a QWASAR-owned fallback rather than assuming a compatible handheld binary exists.
 
-The old VOID BaseStation code is a prototype, not the security foundation for QWASAR Link. Its current defaults and SSH trust model require a full security redesign before reuse or exposure. Do not expose its embedded daemon as a production service.
+The VOID BaseStation remains a PC-only prototype, not the security foundation for QWASAR Link. Its embedded daemon now uses fail-closed paired-client authentication and per-route capabilities (PR #79); the SSH/SFTP companion path is being hardened to verify known host keys and stop seeding shared default credentials (PR #80). The installable handheld Uplink client, pairing UX, authenticated LAN transport, token rotation/revocation and full SPDW Hub lifecycle are still missing. Do not expose the embedded daemon as a production service.
 
 Optional PC-only integrations:
 - **GRUB2:** a separate bootloader adapter may preview and generate entries for complete bootable OS/rootfs installations, with mandatory backup, explicit consent and rollback. It never selects Pygame versus LÖVE inside the running Linux system and is never modified by ordinary Void Desk package installation.
