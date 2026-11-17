@@ -10,6 +10,12 @@ python3 -m pip install paramiko
 python3 basestation.py
 ```
 
+## SSH host-key verification
+
+BaseStation uses the PC's system SSH known-hosts database and rejects unknown host keys for both command execution and SFTP uploads. Before connecting to a handheld for the first time, obtain its host-key fingerprint through a trusted local channel, verify it, and add the verified key to `~/.ssh/known_hosts`. A changed or unknown key must fail closed; do not enable automatic host-key acceptance.
+
+New service profiles leave usernames and passwords blank. Enter credentials that are valid for the specific device; the old shared `root/root` and `muos/muos` values are no longer seeded. Existing saved profiles are not silently rewritten, so review any older profile and replace default credentials manually.
+
 ## Embedded daemon security boundary
 
 The daemon is intentionally fail-closed:

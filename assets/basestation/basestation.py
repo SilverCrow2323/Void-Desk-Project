@@ -125,15 +125,15 @@ FONT_TERM = (FONT_FAMILY, 10)
 DEFAULT_SERVICES = {
     "ssh": {
         "label": "Secure Shell", "kind": "ssh", "auth": True,
-        "port": 22, "user": "root", "pass": "root",
+        "port": 22, "user": "", "pass": "",
     },
     "sftp": {
         "label": "SFTP", "kind": "sftp", "auth": True,
-        "port": 2022, "user": "muos", "pass": "muos",
+        "port": 2022, "user": "", "pass": "",
     },
     "filebrowser": {
         "label": "FileBrowser (Web)", "kind": "web", "auth": True,
-        "port": 9090, "user": "muos", "pass": "muos",
+        "port": 9090, "user": "", "pass": "",
     },
     "vterm": {
         "label": "Virtual Terminal (Web)", "kind": "web", "auth": False,
@@ -504,10 +504,17 @@ class SSHManager:
             raise RuntimeError("paramiko is not installed")
 
     @staticmethod
-    def exec_command(ip, port, user, password, command, timeout=8):
+    def _new_client():
+        """Create an SSH client that trusts only previously verified host keys."""
         SSHManager._require_paramiko()
         client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.load_system_host_keys()
+        client.set_missing_host_key_policy(paramiko.RejectPolicy())
+        return client
+
+    @staticmethod
+    def exec_command(ip, port, user, password, command, timeout=8):
+        client = SSHManager._new_client()
         try:
             client.connect(ip, port=int(port), username=user, password=password,
                            timeout=timeout, banner_timeout=timeout, auth_timeout=timeout)
@@ -520,17 +527,19 @@ class SSHManager:
 
     @staticmethod
     def push_file(ip, port, user, password, local_path, remote_path, timeout=10):
-        SSHManager._require_paramiko()
-        transport = paramiko.Transport((ip, int(port)))
+        # Use SSHClient rather than a bare Transport so SFTP receives the same
+        # known-host verification policy as command execution.
+        client = SSHManager._new_client()
         try:
-            transport.connect(username=user, password=password)
-            sftp = paramiko.SFTPClient.from_transport(transport)
+            client.connect(ip, port=int(port), username=user, password=password,
+                           timeout=timeout, banner_timeout=timeout, auth_timeout=timeout)
+            sftp = client.open_sftp()
             try:
                 sftp.put(local_path, remote_path)
             finally:
                 sftp.close()
         finally:
-            transport.close()
+            client.close()
 
 
 # ══════════════════════════════════════════════════════════════════════════════

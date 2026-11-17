@@ -1,3 +1,4 @@
+import ast
 import sys
 import unittest
 from pathlib import Path
@@ -44,6 +45,41 @@ class BaseStationSecurityTests(unittest.TestCase):
         self.assertIn('ThreadingHTTPServer(("127.0.0.1", self.port), handler)', source)
         self.assertNotIn('Access-Control-Allow-Origin", "*"', source)
         self.assertIn('valid_client_registry(self.store.cfg.get("clients", {}))', source)
+
+    def test_new_device_profiles_do_not_seed_shared_passwords(self):
+        source = (REPO_ROOT / "assets" / "basestation" / "basestation.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        assignment = next(
+            node for node in tree.body
+            if isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "DEFAULT_SERVICES"
+                    for target in node.targets)
+        )
+        services = ast.literal_eval(assignment.value)
+        for service_id, service in services.items():
+            if service.get("auth"):
+                with self.subTest(service=service_id):
+                    self.assertEqual(service.get("user"), "")
+                    self.assertEqual(service.get("pass"), "")
+
+    def test_ssh_and_sftp_reject_unknown_host_keys(self):
+        source = (REPO_ROOT / "assets" / "basestation" / "basestation.py").read_text(encoding="utf-8")
+        ssh = source.split("class SSHManager:", 1)[1].split("# §6", 1)[0]
+        self.assertIn("client.load_system_host_keys()", ssh)
+        self.assertIn("paramiko.RejectPolicy()", ssh)
+        self.assertNotIn("paramiko.AutoAddPolicy()", ssh)
+        self.assertNotIn("paramiko.Transport(", ssh)
+        self.assertIn("client.open_sftp()", ssh)
+        self.assertGreaterEqual(ssh.count("SSHManager._new_client()"), 2)
+
+    def test_documentation_keeps_the_remaining_uplink_boundary_explicit(self):
+        readme = (REPO_ROOT / "assets" / "basestation" / "README.md").read_text(encoding="utf-8")
+        ecosystem = (REPO_ROOT / "docs" / "PRODUCT_ECOSYSTEM_MAP.md").read_text(encoding="utf-8")
+        self.assertIn("known-hosts database", readme)
+        self.assertIn("leave usernames and passwords blank", readme)
+        self.assertIn("PC-only prototype", ecosystem)
+        self.assertIn("installable handheld Uplink client", ecosystem)
+        self.assertIn("Do not expose the embedded daemon as a production service", ecosystem)
 
 
 if __name__ == "__main__":
