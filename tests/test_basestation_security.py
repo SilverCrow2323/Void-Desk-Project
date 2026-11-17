@@ -72,6 +72,15 @@ class BaseStationSecurityTests(unittest.TestCase):
         self.assertIn("client.open_sftp()", ssh)
         self.assertGreaterEqual(ssh.count("SSHManager._new_client()"), 2)
 
+    def test_documentation_keeps_the_remaining_uplink_boundary_explicit(self):
+        readme = (REPO_ROOT / "assets" / "basestation" / "README.md").read_text(encoding="utf-8")
+        ecosystem = (REPO_ROOT / "docs" / "PRODUCT_ECOSYSTEM_MAP.md").read_text(encoding="utf-8")
+        self.assertIn("known-hosts database", readme)
+        self.assertIn("leave usernames and passwords blank", readme)
+        self.assertIn("PC-only prototype", ecosystem)
+        self.assertIn("installable handheld Uplink client", ecosystem)
+        self.assertIn("Do not expose the embedded daemon as a production service", ecosystem)
+
 
 if __name__ == "__main__":
     unittest.main()
