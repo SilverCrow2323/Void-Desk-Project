@@ -4,7 +4,9 @@
 
 A field manual for the handheld product, its host integration, the QWASAR contracts and the v12 direction.
 
-**[OPEN THE LIVE QWASAR FIELD PORTAL ↗](https://silvercrow2323.github.io/Void-Desk-Project/)** · [Repository](https://github.com/SilverCrow2323/Void-Desk-Project) · [Releases](https://github.com/SilverCrow2323/Void-Desk-Project/releases)
+**[QWASAR FIELD PORTAL — EXPECTED PAGES URL ↗](https://silvercrow2323.github.io/Void-Desk-Project/)**
+
+> The repository has a GitHub Pages publishing workflow, but the latest Actions history does not yet confirm a successful deployment. Use the Wiki and tracked docs as the source until the first publish is verified. · [Repository](https://github.com/SilverCrow2323/Void-Desk-Project) · [Releases](https://github.com/SilverCrow2323/Void-Desk-Project/releases)
 
 > **Visual documentation portal:** browse the [QWASAR Field Portal](../site/index.html) for the designed, responsive guide experience, then open the [interactive Asset Atlas](../site/asset-atlas.html) to inspect the NEXUS icons and real THE FORGE screen capture, or explore the [QWASAR Studio local concept](../site/studio.html) for layout composition and data-only profile export. Press **Ctrl+K / ⌘K** from any page to open quick navigation. The Markdown files here remain the technical source of truth. The GitHub Wiki is optional; the portal does not depend on it.
 
