@@ -13,11 +13,11 @@
 > [!NOTE]
 > Pygame is the reference frontend. LÖVE is experimental and not feature-equivalent. muOS 2606.0 Andromeda is the current packaging target; compatibility is not implied for every device.
 
-## Open the project portal
+## Project website and documentation
 
-**[QWASAR Field Portal — live website ↗](https://silvercrow2323.github.io/Void-Desk-Project/)** · [Repository](https://github.com/SilverCrow2323/Void-Desk-Project) · [Releases](https://github.com/SilverCrow2323/Void-Desk-Project/releases) · [Issues](https://github.com/SilverCrow2323/Void-Desk-Project/issues)
+**[QWASAR Field Portal — expected Pages URL ↗](https://silvercrow2323.github.io/Void-Desk-Project/)** · [Repository](https://github.com/SilverCrow2323/Void-Desk-Project) · [Releases](https://github.com/SilverCrow2323/Void-Desk-Project/releases) · [Issues](https://github.com/SilverCrow2323/Void-Desk-Project/issues)
 
-The portal is the visual front door; this Wiki remains the practical handbook and `docs/` remains the technical source of truth.
+The repository includes a Pages publishing workflow, but a successful deployment is not yet confirmed in Actions. The URL above is the intended site address; until deployment is verified, this Wiki remains the reliable public handbook and `docs/` remains the technical source of truth.
 
 ## Choose your path
 
