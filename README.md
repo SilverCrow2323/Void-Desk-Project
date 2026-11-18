@@ -25,6 +25,7 @@ Void Desk is a controller-first handheld environment in the wider **QWASAR-Env**
 
 | I want to… | Go to |
 |---|---|
+| Open the live project website | [QWASAR Field Portal ↗](https://silvercrow2323.github.io/Void-Desk-Project/) · [source preview](site/index.html) |
 | Explore the visual documentation portal | [QWASAR Field Portal](site/index.html) · [Interactive Asset Atlas](site/asset-atlas.html) · [QWASAR Studio concept](site/studio.html) |
 | Publish or maintain the portal | [Field Portal publishing guide](docs/FIELD_PORTAL_PUBLISHING.md) |
 | Understand the project | [Documentation home](docs/README.md) |
@@ -161,7 +162,7 @@ python3 voiddesk.py --help
 | [Visual capture workflow](docs/visual/README.md) | PNG capture, asset inventory and privacy review |
 | [Security policy](SECURITY.md) | Security reporting and safe-operation boundaries |
 
-The **QWASAR Field Portal** in `site/` is the intended visual reading experience. The technical source remains version-controlled in `docs/` and `wiki-source/`; the live GitHub Wiki is optional and is not required to use or publish the site.
+The **[live QWASAR Field Portal](https://silvercrow2323.github.io/Void-Desk-Project/)** is the public visual reading experience; `site/index.html` is its source preview. The technical source remains version-controlled in `docs/` and `wiki-source/`; the live GitHub Wiki is optional and is not required to use or publish the site.
 
 ## 🧪 Testing and release evidence
 
