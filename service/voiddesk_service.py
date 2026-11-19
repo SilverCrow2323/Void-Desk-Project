@@ -1593,7 +1593,7 @@ def h_hotspot_toggle(args):
     if dcheck:
         return dcheck
     active = (DATA / ".hotspot_active").exists()
-    if not active and IS_DEVICE and deskinfo is not None:
+    if not active and IS_DEVICE:
         connected = True
         if deskinfo is not None:
             try:
