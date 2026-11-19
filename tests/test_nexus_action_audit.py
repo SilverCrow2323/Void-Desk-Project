@@ -77,8 +77,22 @@ def test_forge_bridge_calls_are_registered_and_legacy_dead_rows_are_gone():
     )
     for stale in ("comp_install", "comp_autostart", "clihub_list"):
         assert stale not in forge
-    assert 'bridge.call("session_launch", {id = "xfce"}' in forge
-    assert 'apt_action = "install"' in forge
+    assert 'sm.push("hub_forge_installer"' in forge
+    assert 'sm.push("hub_apt"' in forge
+    assert 'sm.push("hub_shell"' in forge
+    assert 'bridge.call("session_launch"' not in forge
+
+
+def test_session_hub_owns_the_session_launch_bridge():
+    session = (LOVE / "scenes" / "hub_session.lua").read_text(
+        encoding="utf-8"
+    )
+    service = (ROOT / "service" / "voiddesk_service.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'bridge.call("session_list"' in session
+    assert 'bridge.call("session_launch", {id=e.id}' in session
+    assert '"session_launch": h_session_launch' in service
 
 
 def test_muos_apps_scene_builds_a_dynamic_selectable_application_list():
