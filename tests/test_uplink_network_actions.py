@@ -1,0 +1,138 @@
+import importlib.util
+from pathlib import Path
+from types import SimpleNamespace
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def load_service():
+    script = ROOT / "service" / "voiddesk_service.py"
+    spec = importlib.util.spec_from_file_location("voiddesk_uplink_service_test", script)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_network_status_visual_fixture_includes_radio_names_and_switches(monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service, "IS_VISUAL_CAPTURE", True)
+    result = service.h_network_status({})
+    assert result["ok"] is True
+    network = result["network"]
+    assert network["wifi"]["ssid"] == "VOIDDESK-LAB"
+    assert network["wifi"]["radio_on"] is True
+    assert network["hotspot"]["on"] is False
+    assert network["bt"]["name"] == "VOIDDESK-H700"
+    assert network["bt"]["available"] is True
+    assert network["bt"]["on"] is True
+
+
+def test_wifi_radio_cannot_be_disabled_while_hotspot_is_active(tmp_path, monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service, "IS_DEVICE", True)
+    monkeypatch.setattr(service, "IS_VISUAL_CAPTURE", False)
+    monkeypatch.setattr(service, "DATA", tmp_path)
+    (tmp_path / ".hotspot_active").write_text("VoidDesk-AP", encoding="utf-8")
+    monkeypatch.setattr(service.shutil, "which", lambda name: "/usr/sbin/rfkill")
+
+    def fail_run(*_args, **_kwargs):
+        raise AssertionError("rfkill must not run while the AP is active")
+
+    monkeypatch.setattr(service.subprocess, "run", fail_run)
+    result = service.h_wifi_action({"action": "radio_off"})
+    assert result["ok"] is False
+    assert "stop the hotspot" in result["error"]
+
+
+def test_wifi_radio_actions_are_allowlisted_and_call_rfkill(tmp_path, monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service, "IS_DEVICE", True)
+    monkeypatch.setattr(service, "IS_VISUAL_CAPTURE", False)
+    monkeypatch.setattr(service, "DATA", tmp_path)
+    monkeypatch.setattr(service.shutil, "which", lambda name: "/usr/sbin/rfkill")
+    calls = []
+
+    def fake_run(command, **_kwargs):
+        calls.append(command)
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(service.subprocess, "run", fake_run)
+    result = service.h_wifi_action({"action": "radio_on"})
+    assert result == {"ok": True, "state": "on"}
+    assert calls == [["rfkill", "unblock", "wifi"]]
+
+    rejected = service.h_wifi_action({"action": "run arbitrary command"})
+    assert rejected["ok"] is False
+    assert len(calls) == 1
+
+
+def test_bluetooth_device_actions_require_a_valid_mac_and_use_fixed_argv(monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service, "IS_DEVICE", True)
+    monkeypatch.setattr(service, "IS_VISUAL_CAPTURE", False)
+    monkeypatch.setattr(service.shutil, "which", lambda name: "/usr/bin/bluetoothctl")
+    calls = []
+
+    def fake_run(command, **_kwargs):
+        calls.append(command)
+        return SimpleNamespace(returncode=0, stdout="Pairing successful", stderr="")
+
+    monkeypatch.setattr(service.subprocess, "run", fake_run)
+    invalid = service.h_bt_action({"action": "pair", "mac": "not-a-device"})
+    assert invalid["ok"] is False
+    assert calls == []
+
+    result = service.h_bt_action({
+        "action": "pair", "mac": "00:11:22:33:44:55",
+    })
+    assert result["ok"] is True
+    assert calls == [["bluetoothctl", "pair", "00:11:22:33:44:55"]]
+
+
+def test_bluetooth_snapshot_reads_alias_power_and_paired_count(monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service.shutil, "which", lambda name: "/usr/bin/bluetoothctl")
+
+    def fake_run(command, **_kwargs):
+        if command[-1] == "show":
+            return SimpleNamespace(
+                returncode=0, stdout="Controller AA:BB:CC:DD:EE:FF\n    Alias: H700-Blue\n    Powered: yes\n",
+                stderr="",
+            )
+        if command[-1] == "paired-devices":
+            return SimpleNamespace(
+                returncode=0,
+                stdout="Device 00:11:22:33:44:55 Headphones\nDevice 10:20:30:40:50:60 Pad\n",
+                stderr="",
+            )
+        raise AssertionError(command)
+
+    monkeypatch.setattr(service.subprocess, "run", fake_run)
+    result = service._bluetooth_snapshot(False)
+    assert result == {
+        "available": True, "name": "H700-Blue", "on": True, "count": 2,
+    }
+
+
+def test_network_probe_visual_fixture_is_deterministic(monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service, "IS_VISUAL_CAPTURE", True)
+
+    def fail_run(*_args, **_kwargs):
+        raise AssertionError("visual capture must not probe the real network")
+
+    monkeypatch.setattr(service.subprocess, "run", fail_run)
+    result = service.h_network_probe({})
+    assert result["ok"] is True
+    assert result["probe"]["gateway"] == "192.168.1.1"
+    assert result["probe"]["interface"] == "wlan0"
+    assert result["probe"]["internet"] is True
+
+
+def test_uplink_network_action_handlers_are_registered():
+    service = load_service()
+    assert service.HANDLERS["network_probe"] is service.h_network_probe
+    assert service.HANDLERS["wifi_action"] is service.h_wifi_action
+    assert service.HANDLERS["bt_action"] is service.h_bt_action
