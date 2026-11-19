@@ -77,7 +77,7 @@ function M.new(config)
             elseif action == "select" then
                 jobs.toggle_overlay()
             end
-        end))
+        end)
     end
 
     function scene.save_state()
