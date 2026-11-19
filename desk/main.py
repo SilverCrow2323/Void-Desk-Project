@@ -11775,18 +11775,30 @@ class App(object):
                                                zoom)
         # Organic branches sit beneath the planet nodes: the old Kid Desk
         # planetarium remains intact, now read as a living navigation tree.
-        tree_positions = {0: (sun_sx, sun_sy)}
-        tree_positions.update({
-            idx: (item[0], item[1]) for idx, item in positions.items()
-        })
-        disabled_nodes = {
-            idx for idx, state in self.qwasar_nexus_node_states.items()
-            if state.get("enabled") is False
-        }
-        draw_life_tree(
-            self.surface, tree_positions, NEXUS_NODE_COLOR, self.sel,
-            t_now, disabled_nodes=disabled_nodes,
-        )
+        # The navigation tree is a decorative overlay, never a prerequisite
+        # for the actual home screen. A renderer hiccup must not leave the
+        # device showing only the header: always continue with the planets,
+        # labels, side panels and input routes.
+        try:
+            tree_positions = {0: (sun_sx, sun_sy)}
+            tree_positions.update({
+                idx: (item[0], item[1]) for idx, item in positions.items()
+            })
+            disabled_nodes = {
+                idx for idx, state in self.qwasar_nexus_node_states.items()
+                if state.get("enabled") is False
+            }
+            draw_life_tree(
+                self.surface, tree_positions, NEXUS_NODE_COLOR, self.sel,
+                t_now, disabled_nodes=disabled_nodes,
+            )
+        except Exception as exc:
+            if not getattr(self, "_nexus_tree_error_logged", False):
+                sys.stderr.write(
+                    "[NEXUS] Tree overlay disabled after render error: %s\\n"
+                    % str(exc)[:180]
+                )
+                self._nexus_tree_error_logged = True
         order = sorted(positions.items(), key=lambda kv: kv[1][2])
         for idx, (sx, sy, depth) in order:
             sel = (idx == self.sel)
