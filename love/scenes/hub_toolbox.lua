@@ -33,7 +33,7 @@ end
 return dashboard.new({
     title = "RT:TOOLBOX",
     node_idx = 4,
-    widget_height = L.WIDGET_H,
+    widget_height = 68,
     row_height = L.MENU_ROW_H,
     status = "Productivity tools",
     background_draw = function(W,H,t,_nc,alpha)
