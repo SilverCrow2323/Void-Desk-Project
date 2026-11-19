@@ -1604,6 +1604,12 @@ def h_hotspot_toggle(args):
         return {"ok": False, "error": str(e)}
 
 def h_wifi_scan(args):
+    if IS_VISUAL_CAPTURE:
+        return {"ok": True, "networks": [
+            {"ssid": "VOIDDESK-LAB", "signal": 95, "secure": True},
+            {"ssid": "Workshop-Guest", "signal": 72, "secure": True},
+            {"ssid": "Open-Test-Net", "signal": 41, "secure": False},
+        ]}
     if not IS_DEVICE:
         return {"ok": True, "networks": []}
     nets, seen = [], set()
@@ -1750,6 +1756,11 @@ def h_network_probe(args):
 
 
 def h_bt_scan(args):
+    if IS_VISUAL_CAPTURE:
+        return {"ok": True, "devices": [
+            {"mac": "00:11:22:33:44:55", "name": "VOIDDESK Controller"},
+            {"mac": "10:20:30:40:50:60", "name": "Wireless Headphones"},
+        ]}
     if not IS_DEVICE:
         return {"ok": True, "devices": []}
     if not shutil.which("bluetoothctl"):
