@@ -3,6 +3,7 @@ local bridge = require("core.bridge")
 local sm = require("core.scene_manager")
 local nodes = require("core.nodes")
 local widgets = require("core.widgets")
+local uplink_bg = require("effects.uplink_bg")
 local qr = require("lib.qr")
 
 local state = {
@@ -182,6 +183,9 @@ local config = {
     widget_height = 142,
     row_height = 46,
     status = "Native service integration",
+    background_draw = function(W, H, t, _nc, alpha)
+        uplink_bg.draw(W, H, t, "mesh", {0.22,0.80,0.98}, alpha)
+    end,
     on_enter = function(scene)
         refresh(scene, false)
     end,
