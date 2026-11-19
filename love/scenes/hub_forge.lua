@@ -1,205 +1,27 @@
-local dashboard = require("core.dashboard_screen")
-local bridge    = require("core.bridge")
-local sm        = require("core.scene_manager")
-local config    = require("core.config")
-local nodes     = require("core.nodes")
-local widgets   = require("core.widgets")
-
-local state = {
-    disk_free_gb = 0,
-    ram_pct = 0,
-    uptime_s = 0,
-    kernel = "—",
+local sm=require("core.scene_manager")
+local input=require("core.input")
+local bridge=require("core.bridge")
+local font=require("core.font")
+local icon=require("core.icon")
+local bg=require("effects.forge_bg")
+local M={}
+local RED={.94,.16,.12}
+local modules={
+{icon="download",title="FORGE INSTALLER",sub="Curated tools for your VoidDesk setup",hint="Browse recommendations and install selected packages.",run=function() return sm.push("hub_forge_installer",{}) end},
+{icon="list",title="APT PACKAGE MANAGER",sub="Search the full Debian package catalogue",hint="Find, inspect, install and remove packages.",run=function() return sm.push("hub_apt",{}) end},
+{icon="trash",title="INSTALLED & REMOVE",sub="Review what is already installed",hint="Browse installed packages and remove unwanted software.",run=function() return sm.push("hub_apt",{tab="INSTALLED"}) end},
+{icon="refresh",title="SYSTEM MAINTENANCE",sub="Refresh indexes, upgrade and clean",hint="Maintain package metadata and the APT cache.",run=function() return sm.push("hub_apt",{tab="SYSTEM"}) end},
+{icon="gear",title="OPERATIONS & PROGRESS",sub="Track active and completed tasks",hint="Inspect package jobs and review operation logs.",run=function() return sm.push("hub_apt",{tab="JOBS"}) end},
+{icon="terminal",title="SHELL & CLI",sub="Open the local service terminal",hint="Advanced tools for supported command-line workflows.",run=function() return sm.push("hub_shell", {}) end},
 }
-
-local function refresh(scene, silent)
-    if not silent then scene.set_status("Reading system state...") end
-    bridge.call("system_status", {}, function(resp)
-        if resp.ok and resp.system then
-            local d = resp.system.disk or {}
-            state.disk_free_gb = d[1] and d[1].free_gb or 0
-            state.ram_pct = (resp.system.ram or {}).pct or 0
-            state.uptime_s = resp.system.uptime_s or 0
-            state.kernel = resp.system.kernel or "—"
-            if not silent then scene.set_status("Ready") end
-        else
-            scene.set_status("State: " .. (resp.error or "failed"))
-        end
-    end)
-end
-
-local function fmt_uptime(s)
-    s = s or 0
-    local d = math.floor(s / 86400)
-    local h = math.floor((s % 86400) / 3600)
-    local m = math.floor((s % 3600) / 60)
-    if d > 0 then return string.format("%dd%dh", d, h) end
-    if h > 0 then return string.format("%dh%dm", h, m) end
-    return string.format("%dm", m)
-end
-
-return dashboard.new({
-    title = "THE FORGE",
-    node_idx = 3,
-    widget_height = 140,
-    status = "Installer & updater",
-
-    on_enter = function(scene) refresh(scene, false) end,
-    on_update = function(scene, dt)
-        scene._t = (scene._t or 0) + dt
-        if scene._t > 5 then scene._t = 0; refresh(scene, true) end
-    end,
-
-    background_draw = require("effects.forge_bg").draw,
-    widgets_draw = function(scene, alpha)
-        local W = love.graphics.getWidth()
-        local nc = nodes.color_for(3)
-
-        widgets.status_card(12, 62, (W - 40)/2, 60, "pkg",
-            "Apt cache", "run Update or Clean",
-            nc, "READY", alpha)
-        widgets.status_card(12 + (W-40)/2 + 8, 62, (W - 40)/2, 60, "disk",
-            "Disk", string.format("%.1f GB free", state.disk_free_gb),
-            (state.disk_free_gb > 1 and {0.4, 0.9, 0.5} or {1, 0.5, 0.4}),
-            state.disk_free_gb > 1 and "OK" or "LOW", alpha)
-
-        widgets.info_row(20, 132, W - 40, "RAM used",
-                         string.format("%d%%", state.ram_pct or 0), nc, alpha)
-        widgets.info_row(20, 152, W - 40, "Uptime",
-                         fmt_uptime(state.uptime_s), {0.75, 0.80, 0.85}, alpha)
-    end,
-
-    items = {
-        { icon = "pkg", label = "APT Package Manager",
-          desc = "Search, install, remove and maintain XFCE packages",
-          action = function(scene)
-              if sm.push("hub_apt", {}) then
-                  return "Opening APT manager..."
-              end
-              scene.set_status("APT manager: " .. tostring(sm.last_error() or "cannot open"))
-              return "APT manager unavailable"
-          end },
-        { icon = "pkg", label = "Install XFCE Desktop",
-          desc = "Install or repair the optional Debian/Ubuntu desktop image",
-          action = function(scene)
-              scene.set_status("Installing XFCE desktop...")
-              bridge.call("xfce_install", {}, function(resp)
-                  if resp.ok then
-                      scene.set_status(resp.note or "XFCE installation started")
-                      refresh(scene, true)
-                  else
-                      scene.set_status("Install: " .. (resp.error or "failed"))
-                  end
-              end)
-              return "Installing XFCE..."
-          end },
-        { icon = "play", label = "Launch XFCE Desktop",
-          desc = "Hand off the handheld display to the installed desktop",
-          action = function(scene)
-              scene.set_status("Handing off to XFCE...")
-              bridge.call("session_launch", {id = "xfce"}, function(resp)
-                  if resp.ok then
-                      scene.set_status(resp.note or "Starting XFCE...")
-                      if resp.handoff then love.event.quit() end
-                  else
-                      scene.set_status("Launch: " .. (resp.error or "failed"))
-                  end
-              end)
-              return "Launching XFCE..."
-          end },
-        { icon = "refresh", label = "Package maintenance",
-          desc = "Update, upgrade or clean the XFCE image package cache",
-          action = function()
-              if sm.push("hub_apt", {tab = "SYSTEM"}) then
-                  return "Opening package maintenance..."
-              end
-              return "APT maintenance unavailable"
-          end },
-        { icon = "terminal", label = "Shell terminal",
-          desc = "Open the non-blocking local service terminal",
-          action = function()
-              if sm.push("hub_shell", {}) then return "Opening shell..." end
-              return "Shell unavailable"
-          end },
-        { icon = "pkg", label = "Install htop",
-          desc = "Interactive process viewer in the XFCE image",
-          action = function(scene)
-              scene.set_status("Installing htop...")
-              bridge.call("job_start", {
-                  apt_action = "install", packages = {"htop"},
-                  name = "apt: htop", hub = "forge",
-              }, function(resp)
-                  scene.set_status(resp.ok and
-                      ("Job #" .. tostring(resp.job.id) .. " started")
-                      or ("Install: " .. (resp.error or "failed")))
-              end)
-              return "Installing htop..."
-          end },
-        { icon = "pkg", label = "Install ncdu",
-          desc = "Disk usage analyser in the XFCE image",
-          action = function(scene)
-              scene.set_status("Installing ncdu...")
-              bridge.call("job_start", {
-                  apt_action = "install", packages = {"ncdu"},
-                  name = "apt: ncdu", hub = "forge",
-              }, function(resp)
-                  scene.set_status(resp.ok and
-                      ("Job #" .. tostring(resp.job.id) .. " started")
-                      or ("Install: " .. (resp.error or "failed")))
-              end)
-              return "Installing ncdu..."
-          end },
-        { icon = "pkg", label = "Install ffmpeg",
-          desc = "Audio/video toolkit in the XFCE image",
-          action = function(scene)
-              scene.set_status("Installing ffmpeg...")
-              bridge.call("job_start", {
-                  apt_action = "install", packages = {"ffmpeg"},
-                  name = "apt: ffmpeg", hub = "forge",
-              }, function(resp)
-                  scene.set_status(resp.ok and
-                      ("Job #" .. tostring(resp.job.id) .. " started")
-                      or ("Install: " .. (resp.error or "failed")))
-              end)
-              return "Installing ffmpeg..."
-          end },
-        { icon = "pkg", label = "Install curl",
-          desc = "HTTP client in the XFCE image",
-          action = function(scene)
-              scene.set_status("Installing curl...")
-              bridge.call("job_start", {
-                  apt_action = "install", packages = {"curl"},
-                  name = "apt: curl", hub = "forge",
-              }, function(resp)
-                  scene.set_status(resp.ok and
-                      ("Job #" .. tostring(resp.job.id) .. " started")
-                      or ("Install: " .. (resp.error or "failed")))
-              end)
-              return "Installing curl..."
-          end },
-        { icon = "download", label = "Check Void Desk releases",
-          desc = "Read the latest public GitHub release metadata",
-          action = function(scene)
-              scene.set_status("Checking GitHub releases...")
-              bridge.call("gh_fetch_releases", {}, function(resp)
-                  if resp.ok then
-                      scene.set_status(resp.tag and ("Latest: " .. resp.tag)
-                          or "No published releases yet")
-                  else
-                      scene.set_status("Release check: " .. (resp.error or "failed"))
-                  end
-              end)
-              return "Checking releases..."
-          end },
-        { icon = "terminal", label = "Shell & CLI tools",
-          desc = "Open the shell for supported command-line utilities",
-          action = function()
-              if sm.push("hub_shell", {}) then return "Opening shell..." end
-              return "Shell unavailable"
-          end },
-        { icon = "back", label = "Back",
-          desc = "Return to Nexus",
-          action = function() sm.back() end },
-
-    },
-})
+local st={sel=1,t=0,status="FORGE SYSTEM READY"}
+local function C(c,a) love.graphics.setColor(c[1],c[2],c[3],a or 1) end
+local function T(s,x,y,w,z,c,align,b) local f=(b and font.bold or font.regular)(z) or love.graphics.newFont(z); love.graphics.setFont(f); C(c or {.9,.92,.95}); love.graphics.printf(tostring(s or ""),x,y,w,align or "left") end
+local function refresh() st.status="SCANNING PACKAGE ENVIRONMENT…"; bridge.call("system_status",{},function(r) st.status=r.ok and "FORGE SYSTEM READY" or "SYSTEM STATUS UNAVAILABLE" end) end
+local function activate() local m=modules[st.sel]; if not m.run() then st.status="MODULE UNAVAILABLE · "..m.title end end
+function M.enter() st.sel=1; st.t=0; refresh(); input.clear(); input.on("press",function(a) if a=="left" or a=="up" then st.sel=(st.sel-2)%#modules+1 elseif a=="right" or a=="down" then st.sel=st.sel%#modules+1 elseif a=="a" then activate() elseif a=="y" then refresh() elseif a=="b" then sm.back() end end) end
+function M.leave() input.clear() end
+function M.update(dt) st.t=st.t+dt end
+local function node(m,i,cx,cy,r,sel) local a=-math.pi/2+(i-1)*2*math.pi/#modules; local x,y=cx+math.cos(a)*r,cy+math.sin(a)*r; local rad=sel and 29 or 21; if sel then C(RED,.18+.08*math.sin(st.t*4)); love.graphics.circle("fill",x,y,rad+12); C(RED,.9); love.graphics.setLineWidth(2); love.graphics.circle("line",x,y,rad+5); local p=st.t*2.4; C({1,.52,.24}); love.graphics.circle("fill",x+math.cos(p)*(rad+10),y+math.sin(p)*(rad+10),2.5) end; C(sel and {.13,.035,.035} or {.045,.045,.052},.97); love.graphics.circle("fill",x,y,rad); C(sel and RED or {.36,.22,.22},.8); love.graphics.circle("line",x,y,rad); icon.draw(m.icon,x-(sel and 15 or 12),y-(sel and 12 or 9),sel and 30 or 24,sel and {1,.52,.32} or {.68,.48,.46}); T(m.title,x-58,y+(y>cy and rad+4 or -rad-15),116,7,sel and {1,.72,.62} or {.58,.48,.47},"center",sel) end
+function M.draw() local W,H=love.graphics.getDimensions(); bg.draw(W,H,st.t,RED,1); love.graphics.setColor(.012,.009,.012,.30); love.graphics.rectangle("fill",0,0,W,H); T("VOIDDESK  /  SOFTWARE WORKSHOP",14,9,W-28,8,{1,.35,.27},"left",true); T("THE FORGE",14,24,W-28,22,{.98,.94,.92},"left",true); T("PACKAGE CONTROL  •  INSTALL  •  MAINTAIN",15,50,W-30,8,{.62,.49,.48}); local cx,cy=W/2,H*.48; local r=math.min(112,H*.245,W*.28); C({.72,.13,.10},.34); love.graphics.setLineWidth(1.4); love.graphics.circle("line",cx,cy,r); C({.95,.22,.14},.14); love.graphics.circle("line",cx,cy,r+8); for i=1,18 do local a=i*math.pi*2/18+st.t*.07; C({1,.28,.14},.35); love.graphics.circle("fill",cx+math.cos(a)*(r+8),cy+math.sin(a)*(r+8),1.1) end; for i,m in ipairs(modules) do node(m,i,cx,cy,r,i==st.sel) end; local m=modules[st.sel]; C({.025,.018,.022},.96); love.graphics.circle("fill",cx,cy,math.min(59,H*.135)); C(RED,.6); love.graphics.circle("line",cx,cy,math.min(59,H*.135)); icon.draw(m.icon,cx-17,cy-25,34,{1,.43,.29}); T("SELECTED",cx-45,cy+12,90,7,{.69,.48,.45},"center",true); T(m.title,cx-75,cy+24,150,8,{1,.78,.68},"center",true); local py=H-83; C({.025,.018,.022},.94); love.graphics.rectangle("fill",10,py,W-20,51,6,6); C(RED,.65); love.graphics.rectangle("line",10,py,W-20,51,6,6); T(m.sub,18,py+6,W-36,10,{.97,.91,.89},"center",true); T(m.hint,18,py+22,W-36,8,{.69,.61,.61},"center"); T(st.status,12,H-27,W-24,7,{.61,.47,.46},"center"); T("A OPEN     ◀ ▶ ROTATE     Y REFRESH     B BACK",12,H-14,W-24,8,{.85,.48,.42},"center",true); love.graphics.setColor(1,1,1,1) end
+return M

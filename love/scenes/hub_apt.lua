@@ -176,11 +176,12 @@ end
 
 function scene.enter(args)
     local requested = args and args.tab or ""
-    tab = requested == "SYSTEM" and 4 or requested == "JOBS" and 3 or 1
+    tab = requested == "SYSTEM" and 4 or requested == "JOBS" and 3 or requested == "INSTALLED" and 2 or 1
     selected, offset, key_selected = 1, 1, 1
     mode, busy = "results", false
     status = tab == 4 and "APT maintenance in the XFCE image" or
         tab == 3 and "Background package jobs" or
+        tab == 2 and "Installed packages in the XFCE image" or
         "Search APT packages in the XFCE image"
     results, installed, jobs, job_log = {}, {}, {}, {}
     refresh_installed()

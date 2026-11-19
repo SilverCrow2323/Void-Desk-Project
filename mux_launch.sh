@@ -59,6 +59,14 @@ except Exception:
     print('py')
 " 2>/dev/null)"
     [ -z "$ENGINE" ] && ENGINE="py"
+    # This muOS/H700 package ships the Pygame frontend as its supported UI.
+    # Older configurations may still persist engine=love from the experimental
+    # frontend. Migrate that stale preference instead of exiting before the UI.
+    if [ "$ENGINE" = "love" ]; then
+        echo "$(date) migrating unsupported muOS engine preference: love -> py" >>"$LOG"
+        ENGINE="py"
+        revert_engine_to_py
+    fi
     # Never select the experimental LÖVE binary unless its shared runtime
     # is bundled too. Older packages shipped lib/love without liblove-11.5.so,
     # which exits immediately at the dynamic loader.

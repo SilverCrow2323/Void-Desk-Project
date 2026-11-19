@@ -99,3 +99,16 @@ def test_session_hub_catalog_distinguishes_supported_and_planned_desktops():
         assert f'id="{env_id}"' in source
     assert "NOT AVAILABLE YET" in source
     assert "REINSTALL NOT WIRED YET" in source
+
+
+def test_forge_uses_red_circular_module_carousel_and_curated_installer():
+    forge = (LOVE / "scenes" / "hub_forge.lua").read_text(encoding="utf-8")
+    installer = (LOVE / "scenes" / "hub_forge_installer.lua").read_text(encoding="utf-8")
+    for label in ("FORGE INSTALLER", "APT PACKAGE MANAGER", "INSTALLED & REMOVE", "SYSTEM MAINTENANCE", "OPERATIONS & PROGRESS", "SHELL & CLI"):
+        assert label in forge
+    assert 'bg.draw(W,H,st.t,RED,1)' in forge
+    assert 'love.graphics.circle("line",cx,cy,r)' in forge
+    for package in ("htop", "ncdu", "curl", "wget", "git", "rsync", "ffmpeg"):
+        assert f'{{"{package}"' in installer
+    assert 'bridge.call("job_start"' in installer
+    assert 'bridge.call("apt_catalog"' in installer

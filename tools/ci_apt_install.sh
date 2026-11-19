@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Bounded apt installer for GitHub-hosted Ubuntu runners.
-# The runner's Azure archive mirror can become extremely slow without
-# producing a connection error, so remove it from the generated mirror list.
+# Regional Azure/AWS archive mirrors can stall large packages without a
+# connection error; normalize those entries to Ubuntu's standard archive.
 set -euo pipefail
 
 if [[ "$#" -lt 1 ]]; then
@@ -9,10 +9,13 @@ if [[ "$#" -lt 1 ]]; then
   exit 2
 fi
 
-MIRROR_LIST="/etc/apt/apt-mirrors.txt"
-if [[ -f "$MIRROR_LIST" ]] && grep -q 'azure\.archive\.ubuntu\.com' "$MIRROR_LIST"; then
-  sudo sed -i '/azure\.archive\.ubuntu\.com/d' "$MIRROR_LIST"
-  echo "Disabled the degraded Azure Ubuntu mirror for this CI job."
+MIRROR_LIST="${QWASAR_CI_APT_MIRROR_LIST:-/etc/apt/apt-mirrors.txt}"
+if [[ -f "$MIRROR_LIST" ]] && grep -Eq 'azure\.archive\.ubuntu\.com|[[:alnum:].-]+\.ec2\.archive\.ubuntu\.com' "$MIRROR_LIST"; then
+  sudo sed -E -i \
+    -e 's|https?://azure\.archive\.ubuntu\.com/ubuntu/?|http://archive.ubuntu.com/ubuntu|g' \
+    -e 's|https?://[[:alnum:].-]+\.ec2\.archive\.ubuntu\.com/ubuntu/?|http://archive.ubuntu.com/ubuntu|g' \
+    "$MIRROR_LIST"
+  echo "Normalized degraded regional Ubuntu mirrors to archive.ubuntu.com."
 fi
 
 APT_OPTIONS=(
