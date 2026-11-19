@@ -10,7 +10,7 @@ local function C(c,a) love.graphics.setColor(c[1],c[2],c[3],a or 1) end
 local function T(s,x,y,w,z,c,align,b) local f=(b and font.bold or font.regular)(z) or love.graphics.newFont(z); love.graphics.setFont(f); C(c or {.9,.94,.98}); love.graphics.printf(tostring(s or ""),x,y,w,align or "left") end
 local function open(kind)
  local routes={wifi="hub_wifi",hotspot="hub_hotspot",bt="hub_bluetooth",basestation="hub_basestation",tailscale="hub_tailscale",sync="hub_syncthing",ftp="hub_ftp",probe="hub_network_tools",wifi_scan="hub_wifi"}
- if kind=="refresh" then return true end; local scene=routes[kind]; if scene then return sm.push(scene,{}) end; return false
+ if kind=="refresh" then refresh(); return true end; local scene=routes[kind]; if scene then return sm.push(scene,{}) end; return false
 end
 local function refresh()
  st.status="UPDATING CONNECTIONS…"
