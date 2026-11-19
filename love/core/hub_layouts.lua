@@ -52,6 +52,17 @@ function M.navigate_grid(cols,action,index,count)
     return target
 end
 
+function M.navigate_media(action,index,count)
+    if index==1 then
+        if action=="down" and count>1 then return 2 end
+        return 1
+    end
+    local sub=index-1
+    local target=M.navigate_grid(2,action,sub,math.max(0,count-1))
+    if action=="up" and sub<=2 then return 1 end
+    return target+1
+end
+
 function M.media(_scene,items,selected,r,accent,alpha)
     local gap=8; local hero_h=math.min(56,math.max(46,math.floor(r.height*.31)))
     if items[1] then
