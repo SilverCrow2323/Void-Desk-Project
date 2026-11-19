@@ -82,8 +82,8 @@ local scene = dashboard.new({
     background_draw = function(W,H,t,_nc,alpha)
         atmosphere.draw(W,H,t,"info",{0.59,0.63,0.71},alpha)
     end,
-    menu_draw = function(scene,items,selected,rect)
-        return layouts.info(scene,items,selected,rect,{0.59,0.63,0.71},1)
+    menu_draw = function(scene,items,selected,rect,alpha)
+        return layouts.info(scene,items,selected,rect,{0.59,0.63,0.71},alpha)
     end,
     on_navigate = function(action,selected,count)
         return layouts.navigate_grid(3,action,selected,count)
