@@ -676,7 +676,7 @@ def _bluetooth_snapshot(fallback_powered=None):
         )
         paired_count = sum(
             1 for line in (paired.stdout or "").splitlines()
-            if re.match(r"^Device\\s+[0-9A-Fa-f:]{17}\\s+.+$", line.strip())
+            if re.match(r"^Device\s+[0-9A-Fa-f:]{17}\s+.+$", line.strip())
         )
     except (OSError, subprocess.TimeoutExpired):
         pass
@@ -1719,7 +1719,7 @@ def h_network_probe(args):
             )
             output = (ping.stdout or "") + (ping.stderr or "")
             internet = ping.returncode == 0
-            match = re.search(r"time[=<]([0-9.]+)\\s*ms", output)
+            match = re.search(r"time[=<]([0-9.]+)\s*ms", output)
             if match:
                 latency = round(float(match.group(1)), 1)
         except (OSError, subprocess.TimeoutExpired):
