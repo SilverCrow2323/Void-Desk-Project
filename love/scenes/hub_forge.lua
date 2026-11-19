@@ -12,7 +12,7 @@ local modules={
 {icon="trash",title="INSTALLED & REMOVE",sub="Review what is already installed",hint="Browse installed packages and remove unwanted software.",run=function() return sm.push("hub_apt",{tab="INSTALLED"}) end},
 {icon="refresh",title="SYSTEM MAINTENANCE",sub="Refresh indexes, upgrade and clean",hint="Maintain package metadata and the APT cache.",run=function() return sm.push("hub_apt",{tab="SYSTEM"}) end},
 {icon="gear",title="OPERATIONS & PROGRESS",sub="Track active and completed tasks",hint="Inspect package jobs and review operation logs.",run=function() return sm.push("hub_apt",{tab="JOBS"}) end},
-{icon="terminal",title="SHELL & CLI",sub="Open the local service terminal",hint="Advanced tools for supported command-line workflows.",run=function() return sm.push("hub_shell",{}) end},
+{icon="terminal",title="SHELL & CLI",sub="Open the local service terminal",hint="Advanced tools for supported command-line workflows.",run=function() return sm.push("hub_shell", {}) end},
 }
 local st={sel=1,t=0,status="FORGE SYSTEM READY"}
 local function C(c,a) love.graphics.setColor(c[1],c[2],c[3],a or 1) end
