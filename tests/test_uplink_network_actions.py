@@ -305,3 +305,62 @@ def test_hotspot_start_does_not_assume_no_wifi_when_interface_probe_is_missing(
     monkeypatch.setattr(service.subprocess, "run", fail_run)
     result = service.h_hotspot_toggle({})
     assert result["confirm_required"] is True
+
+
+def test_bluetooth_unpair_requires_confirmation_and_a_paired_device(monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service, "IS_DEVICE", True)
+    monkeypatch.setattr(service, "IS_VISUAL_CAPTURE", False)
+    monkeypatch.setattr(service.shutil, "which", lambda name: "/usr/bin/bluetoothctl")
+    calls = []
+
+    def fake_run(command, **_kwargs):
+        calls.append(command)
+        return SimpleNamespace(
+            returncode=0,
+            stdout="Device 00:11:22:33:44:55 VOIDDESK Controller\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr(service.subprocess, "run", fake_run)
+    confirm = service.h_bt_action({
+        "action": "remove", "mac": "00:11:22:33:44:55",
+    })
+    assert confirm["confirm_required"] is True
+    assert calls == []
+
+    result = service.h_bt_action({
+        "action": "remove", "mac": "00:11:22:33:44:55",
+        "confirm": True,
+    })
+    assert result["ok"] is True
+    assert calls == [
+        ["bluetoothctl", "paired-devices"],
+        ["bluetoothctl", "remove", "00:11:22:33:44:55"],
+    ]
+
+
+def test_bluetooth_trust_requires_an_existing_pairing(monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service, "IS_DEVICE", True)
+    monkeypatch.setattr(service, "IS_VISUAL_CAPTURE", False)
+    monkeypatch.setattr(service.shutil, "which", lambda name: "/usr/bin/bluetoothctl")
+    monkeypatch.setattr(
+        service.subprocess, "run",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=0, stdout="", stderr="",
+        ),
+    )
+    result = service.h_bt_action({
+        "action": "trust", "mac": "00:11:22:33:44:55",
+    })
+    assert result["ok"] is False
+    assert "not paired" in result["error"]
+
+
+def test_visual_bluetooth_scan_marks_paired_and_unpaired_devices(monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service, "IS_VISUAL_CAPTURE", True)
+    result = service.h_bt_scan({})
+    assert result["devices"][0]["paired"] is True
+    assert result["devices"][1]["paired"] is False
