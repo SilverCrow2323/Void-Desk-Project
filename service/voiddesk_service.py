@@ -1823,7 +1823,7 @@ def h_bt_action(args):
         "power_on": ["power", "on"],
         "power_off": ["power", "off"],
     }
-    if action in ("pair", "trust", "connect", "disconnect"):
+    if action in ("pair", "trust", "connect", "disconnect", "remove"):
         address = str(args.get("mac") or "")
         if not re.fullmatch(r"[0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5}", address):
             return {"ok": False, "error": "a valid Bluetooth device address is required"}
@@ -1901,8 +1901,8 @@ def h_network_probe(args):
 def h_bt_scan(args):
     if IS_VISUAL_CAPTURE:
         return {"ok": True, "devices": [
-            {"mac": "00:11:22:33:44:55", "name": "VOIDDESK Controller"},
-            {"mac": "10:20:30:40:50:60", "name": "Wireless Headphones"},
+            {"mac": "00:11:22:33:44:55", "name": "VOIDDESK Controller", "paired": True},
+            {"mac": "10:20:30:40:50:60", "name": "Wireless Headphones", "paired": False},
         ]}
     if not IS_DEVICE:
         return {"ok": True, "devices": []}
@@ -1917,12 +1917,24 @@ def h_bt_scan(args):
             pass  # expected: "scan on" blocks until stopped
         subprocess.run(["bluetoothctl", "scan", "off"],
                        capture_output=True, text=True, timeout=3)
+        paired_result = subprocess.run(
+            ["bluetoothctl", "paired-devices"],
+            capture_output=True, text=True, timeout=3,
+        )
+        paired_macs = set()
+        for line in (paired_result.stdout or "").splitlines():
+            parts = line.split(" ", 2)
+            if len(parts) == 3 and parts[0] == "Device":
+                paired_macs.add(parts[1].upper())
         r = subprocess.run(["bluetoothctl", "devices"],
                            capture_output=True, text=True, timeout=3)
         for ln in r.stdout.splitlines():
             p = ln.split(" ", 2)
             if len(p) == 3 and p[0] == "Device":
-                devs.append({"mac": p[1], "name": p[2]})
+                devs.append({
+                    "mac": p[1], "name": p[2],
+                    "paired": p[1].upper() in paired_macs,
+                })
         return {"ok": True, "devices": devs}
     except Exception as e:
         return {"ok": False, "error": str(e)}
