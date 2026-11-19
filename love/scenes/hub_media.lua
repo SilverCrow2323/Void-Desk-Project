@@ -29,8 +29,8 @@ return dashboard.new({
     background_draw = function(W,H,t,_nc,alpha)
         atmosphere.draw(W,H,t,"media",{0.91,0.31,0.75},alpha)
     end,
-    menu_draw = function(scene,items,selected,rect)
-        return layouts.media(scene,items,selected,rect,{0.91,0.31,0.75},1)
+    menu_draw = function(scene,items,selected,rect,alpha)
+        return layouts.media(scene,items,selected,rect,{0.91,0.31,0.75},alpha)
     end,
     on_navigate = function(action,selected,count)
         return layouts.navigate_media(action,selected,count)
