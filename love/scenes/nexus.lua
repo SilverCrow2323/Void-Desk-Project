@@ -30,6 +30,83 @@ local warp = { active=false, t=0, target_idx=nil,
 local RING_RADII = { [1]=0, [2]=164, [3]=232, [4]=296 }
 local SQUASH = 0.42
 
+-- Tree of Life links: stable node IDs, independent of profile ordering.
+local TREE_EDGES = {
+    {0,3}, {0,5}, {0,2}, {0,6},
+    {3,4}, {3,11},
+    {5,12}, {5,13},
+    {2,10},
+    {6,1}, {6,7}, {6,8},
+    {0,9}, {9,14},
+}
+
+local function draw_tree_branches(alpha)
+    local by_id = {}
+    for _, body in ipairs(bodies) do by_id[body.node.idx] = body end
+    local selected_id = bodies[selected] and bodies[selected].node.idx or -1
+
+    for edge_index, edge in ipairs(TREE_EDGES) do
+        local parent, child = by_id[edge[1]], by_id[edge[2]]
+        if parent and child then
+            local x0, y0, x3, y3 = parent.x, parent.y, child.x, child.y
+            local dx, dy = x3 - x0, y3 - y0
+            local distance = math.sqrt(dx * dx + dy * dy)
+            if distance > 1 then
+                local nx, ny = -dy / distance, dx / distance
+                local side = (edge_index % 2 == 0) and -1 or 1
+                local bend = math.min(34, math.max(10, distance * 0.12)) * side
+                local x1, y1 = x0 + dx * 0.28 + nx * bend,
+                               y0 + dy * 0.28 + ny * bend
+                local x2, y2 = x0 + dx * 0.72 + nx * bend * 0.55,
+                               y0 + dy * 0.72 + ny * bend * 0.55
+                local points = {}
+                local segments = 12
+                for step = 0, segments do
+                    local t = step / segments
+                    local u = 1 - t
+                    local x = u*u*u*x0 + 3*u*u*t*x1 + 3*u*t*t*x2 + t*t*t*x3
+                    local y = u*u*u*y0 + 3*u*u*t*y1 + 3*u*t*t*y2 + t*t*t*y3
+                    points[#points + 1] = x
+                    points[#points + 1] = y
+                end
+
+                local disabled = parent.node.profile_enabled == false
+                    or child.node.profile_enabled == false
+                local color = nodes.color_for(edge[1])
+                if disabled then color = {0.25, 0.28, 0.33} end
+                local active = (selected_id == edge[1] or selected_id == edge[2])
+                    and not disabled
+
+                love.graphics.setLineWidth(4)
+                love.graphics.setColor(0.025, 0.04, 0.07, 0.90 * alpha)
+                love.graphics.line(points)
+                love.graphics.setLineWidth(active and 2 or 1)
+                love.graphics.setColor(color[1] * 0.34, color[2] * 0.34,
+                                        color[3] * 0.34, 0.88 * alpha)
+                love.graphics.line(points)
+
+                for _, joint in ipairs({5, 9}) do
+                    local offset = joint * 2 + 1
+                    love.graphics.setColor(color[1] * 0.48, color[2] * 0.48,
+                                            color[3] * 0.48, 0.78 * alpha)
+                    love.graphics.circle("fill", points[offset],
+                                         points[offset + 1], active and 2 or 1.3)
+                end
+
+                if active then
+                    love.graphics.setLineWidth(2)
+                    love.graphics.setColor(color[1], color[2], color[3], 0.78 * alpha)
+                    love.graphics.line(points)
+                    local pulse_index = math.floor((time * 7 + edge_index * 1.7) % 11) + 1
+                    local offset = pulse_index * 2 + 1
+                    love.graphics.circle("fill", points[offset],
+                                         points[offset + 1], 3)
+                end
+            end
+        end
+    end
+end
+
 local function lerp(a, b, t) return a + (b - a) * t end
 
 local function world_angle_of(b)
@@ -399,6 +476,10 @@ function nexus.draw()
         love.graphics.setLineWidth(1)
         love.graphics.ellipse("line", 320, 240, rr - 4, (rr - 4) * SQUASH)
     end
+
+    -- Tree branches sit beneath the orbital bodies: planetarium first,
+    -- living parent/child topology second, without changing routes.
+    draw_tree_branches(warp_dim)
 
     -- Sort for depth
     local sorted = {}
