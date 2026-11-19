@@ -39,7 +39,7 @@ local function scan()
  bridge.call("wifi_scan",{},function(r)
   st.busy=false
   if r.ok then
-   st.networks=r.networks or {}; st.mode="nearby"; st.selected=1
+   st.networks=r.networks or {}; st.selected=math.min(st.selected,math.max(1,#st.networks))
    st.status=tostring(#st.networks).." NETWORKS FOUND"
   else st.status="SCAN · "..tostring(r.error or "unavailable") end
  end)
