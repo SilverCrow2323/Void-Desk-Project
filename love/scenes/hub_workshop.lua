@@ -52,8 +52,8 @@ return dashboard.new({
     background_draw = function(W,H,t,_nc,alpha)
         atmosphere.draw(W,H,t,"workshop",{0.69,0.43,0.94},alpha)
     end,
-    menu_draw = function(scene,items,selected,rect)
-        return layouts.workshop(scene,items,selected,rect,{0.69,0.43,0.94},1)
+    menu_draw = function(scene,items,selected,rect,alpha)
+        return layouts.workshop(scene,items,selected,rect,{0.69,0.43,0.94},alpha)
     end,
     on_navigate = function(action,selected,count)
         return layouts.navigate_grid(2,action,selected,count)
