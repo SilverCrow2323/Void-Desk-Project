@@ -729,7 +729,12 @@ def h_network_status(args):
                      "connected": bool(connected), "ssid": ssid or "—",
                      "signal": signal_pct, "ip": ip or "—"},
             "bt": bt,
-            "hotspot": {"on": hotspot_on, "ssid": hotspot_ssid or "—"},
+            "hotspot": {
+                "on": hotspot_on, "ssid": hotspot_ssid or "—",
+                "single_radio": not Path(os.environ.get(
+                    "VD_WLAN1_SYSFS", "/sys/class/net/wlan1"
+                )).exists(),
+            },
             "info": {"hostname": platform.node(),
                      "gateway": _gateway_ip() or "—"},
         }}
@@ -1588,6 +1593,19 @@ def h_hotspot_toggle(args):
     if dcheck:
         return dcheck
     active = (DATA / ".hotspot_active").exists()
+    if not active and IS_DEVICE and deskinfo is not None:
+        try:
+            connected = bool(deskinfo.wifi_status()[0])
+        except Exception:
+            connected = False
+        single_radio = not Path(os.environ.get(
+            "VD_WLAN1_SYSFS", "/sys/class/net/wlan1"
+        )).exists()
+        if connected and single_radio and args.get("confirm_disruption") is not True:
+            return {
+                "ok": False, "confirm_required": True,
+                "reason": "single-radio hotspot may interrupt the upstream Wi-Fi connection",
+            }
     script = APP_DIR / "bin" / \
         ("vd_hotspot_stop.sh" if active else "vd_hotspot_start.sh")
     try:
