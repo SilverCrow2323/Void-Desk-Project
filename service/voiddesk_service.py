@@ -1594,10 +1594,12 @@ def h_hotspot_toggle(args):
         return dcheck
     active = (DATA / ".hotspot_active").exists()
     if not active and IS_DEVICE and deskinfo is not None:
-        try:
-            connected = bool(deskinfo.wifi_status()[0])
-        except Exception:
-            connected = False
+        connected = True
+        if deskinfo is not None:
+            try:
+                connected = bool(deskinfo.wifi_status()[0])
+            except Exception:
+                connected = True
         single_radio = not Path(os.environ.get(
             "VD_WLAN1_SYSFS", "/sys/class/net/wlan1"
         )).exists()
