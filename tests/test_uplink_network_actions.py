@@ -136,3 +136,30 @@ def test_uplink_network_action_handlers_are_registered():
     assert service.HANDLERS["network_probe"] is service.h_network_probe
     assert service.HANDLERS["wifi_action"] is service.h_wifi_action
     assert service.HANDLERS["bt_action"] is service.h_bt_action
+
+
+def test_visual_capture_scanners_return_usable_fixture_rows(monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service, "IS_VISUAL_CAPTURE", True)
+    monkeypatch.setattr(service, "IS_DEVICE", False)
+
+    wifi = service.h_wifi_scan({})
+    bt = service.h_bt_scan({})
+    assert wifi["networks"][0]["ssid"] == "VOIDDESK-LAB"
+    assert len(wifi["networks"]) == 3
+    assert bt["devices"][0]["mac"] == "00:11:22:33:44:55"
+    assert len(bt["devices"]) == 2
+
+
+def test_bluetooth_snapshot_reports_unavailable_without_a_controller(monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service.shutil, "which", lambda name: "/usr/bin/bluetoothctl")
+    monkeypatch.setattr(
+        service.subprocess, "run",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=0, stdout="No default controller available", stderr="",
+        ),
+    )
+    assert service._bluetooth_snapshot(True) == {
+        "available": False, "name": "—", "on": False, "count": 0,
+    }
