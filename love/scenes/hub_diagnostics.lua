@@ -1,4 +1,6 @@
 local dashboard = require("core.dashboard_screen")
+local layouts = require("core.hub_layouts")
+local atmosphere = require("effects.hub_atmosphere")
 local bridge = require("core.bridge")
 local sm = require("core.scene_manager")
 local nodes = require("core.nodes")
@@ -70,6 +72,15 @@ return dashboard.new({
     widget_height = 142,
     row_height = 46,
     status = "Read-only system and service checks",
+    background_draw = function(W,H,t,_nc,alpha)
+        atmosphere.draw(W,H,t,"diagnostics",{0.69,0.43,0.94},alpha)
+    end,
+    menu_draw = function(scene,items,selected,rect,alpha)
+        return layouts.diagnostics(scene,items,selected,rect,{0.69,0.43,0.94},alpha)
+    end,
+    on_navigate = function(action,selected,count)
+        return layouts.navigate_grid(2,action,selected,count)
+    end,
 
     on_enter = function(scene) refresh(scene, false) end,
     on_update = function(scene, dt)
