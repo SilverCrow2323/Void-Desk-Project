@@ -1831,6 +1831,22 @@ def h_bt_action(args):
         if not re.fullmatch(r"[0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5}", address):
             return {"ok": False, "error": "a valid Bluetooth device address is required"}
         commands[action] = [action, address]
+    if action in ("trust", "disconnect", "remove"):
+        try:
+            paired = subprocess.run(
+                ["bluetoothctl", "paired-devices"], capture_output=True,
+                text=True, timeout=3, check=False,
+            )
+            paired_addresses = {
+                line.split(" ", 2)[1].upper()
+                for line in (paired.stdout or "").splitlines()
+                if len(line.split(" ", 2)) == 3
+                and line.split(" ", 2)[0] == "Device"
+            }
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return {"ok": False, "error": "cannot verify Bluetooth pairing: " + str(exc)[:120]}
+        if address.upper() not in paired_addresses:
+            return {"ok": False, "error": "Bluetooth device is not paired"}
     command = commands.get(action)
     if command is None:
         return {"ok": False, "error": "unsupported Bluetooth action"}
