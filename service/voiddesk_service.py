@@ -1623,6 +1623,129 @@ def h_hotspot_toggle(args):
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
+def _wifi_control_iface():
+    """Choose a real wireless interface discovered locally; never accept one from IPC."""
+    if deskinfo is None:
+        return None
+    try:
+        interfaces = deskinfo.wireless_ifaces() or []
+    except Exception:
+        interfaces = []
+    for iface in interfaces:
+        if isinstance(iface, str) and re.fullmatch(r"[A-Za-z0-9_.:-]{1,15}", iface):
+            if Path("/sys/class/net") .joinpath(iface).exists():
+                return iface
+    return None
+
+
+def _wpa_cli(iface, *args, timeout=5):
+    if not isinstance(iface, str) or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,15}", iface):
+        return {"ok": False, "error": "invalid wireless interface"}
+    if not shutil.which("wpa_cli"):
+        return {"ok": False, "error": "wpa_cli is not available"}
+    result = subprocess.run(
+        ["wpa_cli", "-i", iface] + [str(value) for value in args],
+        capture_output=True, text=True, timeout=timeout, check=False,
+    )
+    output = (result.stdout or result.stderr or "").strip()
+    if result.returncode != 0 or output.upper().splitlines()[-1:] != ["OK"]:
+        return {"ok": False, "error": output[-240:] or "wpa_supplicant command failed"}
+    return {"ok": True, "output": output}
+
+
+def _wifi_saved_profiles(iface):
+    response = _wpa_cli(iface, "list_networks")
+    if not response.get("ok"):
+        return response
+    profiles = []
+    for line in response["output"].splitlines()[1:]:
+        match = re.match(
+            r"^\\s*(\\d+)\\s+(.+?)\\s+(any|[0-9A-Fa-f:]{17})(?:\\s+(\\[.*\\]))?\\s*$",
+            line,
+        )
+        if not match:
+            continue
+        flags = match.group(4) or ""
+        profiles.append({
+            "id": match.group(1),
+            "ssid": match.group(2).strip(),
+            "current": "[CURRENT]" in flags,
+            "disabled": "[DISABLED]" in flags,
+        })
+    return {"ok": True, "profiles": profiles, "interface": iface}
+
+
+def h_wifi_saved(args):
+    """List saved wpa_supplicant profiles without exposing PSKs or config contents."""
+    if IS_VISUAL_CAPTURE:
+        return {"ok": True, "interface": "wlan0", "profiles": [
+            {"id": "0", "ssid": "VOIDDESK-LAB", "current": True, "disabled": False},
+            {"id": "1", "ssid": "Workshop-Guest", "current": False, "disabled": False},
+        ]}
+    blocked = device_only("wifi_saved")
+    if blocked:
+        return blocked
+    iface = _wifi_control_iface()
+    if not iface:
+        return {"ok": False, "error": "no wireless interface is available"}
+    try:
+        return _wifi_saved_profiles(iface)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"ok": False, "error": "cannot list saved Wi-Fi profiles: " + str(exc)[:160]}
+
+
+def h_wifi_profile_action(args):
+    """Select, reconnect, disconnect or forget one existing saved profile."""
+    blocked = device_only("wifi_profile_action")
+    if blocked:
+        return blocked
+    action = str(args.get("action") or "")
+    if action not in ("select", "reconnect", "disconnect", "forget"):
+        return {"ok": False, "error": "unsupported Wi-Fi profile action"}
+    iface = _wifi_control_iface()
+    if not iface:
+        return {"ok": False, "error": "no wireless interface is available"}
+    try:
+        if action == "disconnect":
+            result = _wpa_cli(iface, "disconnect")
+            if result.get("ok"):
+                return {"ok": True, "state": "disconnected"}
+            return result
+        if action == "reconnect":
+            result = _wpa_cli(iface, "reassociate")
+            if result.get("ok"):
+                return {"ok": True, "state": "reconnecting"}
+            return result
+        profile_id = str(args.get("id") or "")
+        if not re.fullmatch(r"\\d{1,6}", profile_id):
+            return {"ok": False, "error": "a valid saved profile ID is required"}
+        profiles = _wifi_saved_profiles(iface)
+        if not profiles.get("ok"):
+            return profiles
+        profile = next((p for p in profiles["profiles"] if p["id"] == profile_id), None)
+        if profile is None:
+            return {"ok": False, "error": "saved Wi-Fi profile no longer exists"}
+        if action == "forget":
+            if args.get("confirm") is not True:
+                return {"ok": False, "confirm_required": True,
+                        "reason": "forgetting removes this saved network profile"}
+            removed = _wpa_cli(iface, "remove_network", profile_id)
+            if not removed.get("ok"):
+                return removed
+            saved = _wpa_cli(iface, "save_config")
+            return {"ok": True, "state": "forgotten",
+                    "saved": bool(saved.get("ok"))}
+        selected = _wpa_cli(iface, "select_network", profile_id)
+        if not selected.get("ok"):
+            return selected
+        associated = _wpa_cli(iface, "reassociate")
+        if not associated.get("ok"):
+            return associated
+        return {"ok": True, "state": "connecting", "ssid": profile["ssid"]}
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"ok": False, "error": "Wi-Fi profile action failed: " + str(exc)[:160]}
+
+
 def h_wifi_scan(args):
     if IS_VISUAL_CAPTURE:
         return {"ok": True, "networks": [
@@ -2327,6 +2450,8 @@ HANDLERS = {
     "network_status": h_network_status,
     "network_probe": h_network_probe,
     "wifi_action": h_wifi_action,
+    "wifi_saved": h_wifi_saved,
+    "wifi_profile_action": h_wifi_profile_action,
     "bt_action": h_bt_action,
     "system_status": h_system_status,
     "shell_start": h_shell_start,
