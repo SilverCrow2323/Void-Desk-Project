@@ -106,7 +106,44 @@ local function info(W,H,t,c,a)
   C(c,.25*a); love.graphics.circle("line",W*.5+math.cos(ang)*(72+i*13),H*.52+math.sin(ang)*(45+i*8),2)
  end
 end
-M.MODES={media=media,workshop=workshop,toolbox=toolbox,settings=settings,info=info}
+
+local function diagnostics(W,H,t,c,a)
+ grid(W,H,t,c,a,34)
+ local cx,cy=W*.78,H*.42
+ for k=1,5 do C(c,.09*a); love.graphics.circle("line",cx,cy,k*24+math.sin(t*2+k)*3) end
+ local sweep=t*1.4
+ C(c,.30*a); love.graphics.line(cx,cy,cx+math.cos(sweep)*130,cy+math.sin(sweep)*130)
+ for i=1,12 do
+  local an=i*math.pi/6; local r=45+(i%3)*28
+  C(c,(.16+.12*math.sin(t*2+i))*a)
+  love.graphics.circle("fill",cx+math.cos(an)*r,cy+math.sin(an)*r,2)
+ end
+end
+local function apps(W,H,t,c,a)
+ grid(W,H,t,c,a,26)
+ for row=0,3 do for col=0,5 do
+  local x=col*W/6+8; local y=row*H/4+8
+  local pulse=.1+.08*math.sin(t*1.4+row+col)
+  C(c,pulse*a); love.graphics.rectangle("line",x,y,W/6-16,H/4-16,3,3)
+  C(c,pulse*1.8*a); love.graphics.circle("line",x+9,y+9,3)
+ end end
+end
+local function external(W,H,t,c,a)
+ grid(W,H,t,c,a,38)
+ local pts={}
+ for i=1,8 do
+  local an=t*.16+i*math.pi/4
+  pts[i]={W*.76+math.cos(an)*(68+(i%2)*22),H*.43+math.sin(an)*(48+(i%2)*16)}
+ end
+ for i=1,#pts do
+  local j=i%#pts+1
+  C(c,.2*a); love.graphics.line(pts[i][1],pts[i][2],pts[j][1],pts[j][2])
+  C(c,.35*a); love.graphics.circle("fill",pts[i][1],pts[i][2],3)
+ end
+end
+
+M.MODES={media=media,workshop=workshop,toolbox=toolbox,settings=settings,info=info,
+ diagnostics=diagnostics,apps=apps,external=external}
 function M.draw(W,H,t,mode,color,alpha)
  alpha=alpha or 1
  love.graphics.clear(.008,.012,.024,1)
