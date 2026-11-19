@@ -163,3 +163,105 @@ def test_bluetooth_snapshot_reports_unavailable_without_a_controller(monkeypatch
     assert service._bluetooth_snapshot(True) == {
         "available": False, "name": "—", "on": False, "count": 0,
     }
+
+
+def test_wifi_saved_profiles_hide_credentials_and_parse_spaces_in_ssid(monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service, "IS_DEVICE", True)
+    monkeypatch.setattr(service, "IS_VISUAL_CAPTURE", False)
+    monkeypatch.setattr(
+        service, "deskinfo", SimpleNamespace(wireless_ifaces=lambda: ["lo"]),
+    )
+    monkeypatch.setattr(service.shutil, "which", lambda name: "/usr/sbin/wpa_cli")
+    calls = []
+
+    def fake_run(command, **_kwargs):
+        calls.append(command)
+        return SimpleNamespace(
+            returncode=0,
+            stdout=(
+                "network id / ssid / bssid / flags\n"
+                "0\tHome Network\tany\t[CURRENT]\n"
+                "1\tGuest\tany\t[DISABLED]\n"
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr(service.subprocess, "run", fake_run)
+    result = service.h_wifi_saved({})
+    assert result["ok"] is True
+    assert result["profiles"] == [
+        {"id": "0", "ssid": "Home Network", "current": True, "disabled": False},
+        {"id": "1", "ssid": "Guest", "current": False, "disabled": True},
+    ]
+    assert calls == [["wpa_cli", "-i", "lo", "list_networks"]]
+    assert "psk" not in repr(result).lower()
+
+
+def test_wifi_profile_action_selects_only_an_existing_numeric_profile(monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service, "IS_DEVICE", True)
+    monkeypatch.setattr(service, "IS_VISUAL_CAPTURE", False)
+    monkeypatch.setattr(
+        service, "deskinfo", SimpleNamespace(wireless_ifaces=lambda: ["lo"]),
+    )
+    monkeypatch.setattr(service.shutil, "which", lambda name: "/usr/sbin/wpa_cli")
+    calls = []
+
+    def fake_run(command, **_kwargs):
+        calls.append(command)
+        if command[-1] == "list_networks":
+            return SimpleNamespace(
+                returncode=0,
+                stdout="network id / ssid / bssid / flags\n2\tOffice Wi-Fi\tany\t\n",
+                stderr="",
+            )
+        return SimpleNamespace(returncode=0, stdout="OK", stderr="")
+
+    monkeypatch.setattr(service.subprocess, "run", fake_run)
+    bad = service.h_wifi_profile_action({"action": "select", "id": "999"})
+    assert bad["ok"] is False
+    assert "no longer exists" in bad["error"]
+    assert len(calls) == 1
+
+    result = service.h_wifi_profile_action({"action": "select", "id": "2"})
+    assert result == {"ok": True, "state": "connecting", "ssid": "Office Wi-Fi"}
+    assert calls[-2:] == [
+        ["wpa_cli", "-i", "lo", "select_network", "2"],
+        ["wpa_cli", "-i", "lo", "reassociate"],
+    ]
+
+
+def test_wifi_forget_requires_explicit_confirmation_and_saves_profile(monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service, "IS_DEVICE", True)
+    monkeypatch.setattr(service, "IS_VISUAL_CAPTURE", False)
+    monkeypatch.setattr(
+        service, "deskinfo", SimpleNamespace(wireless_ifaces=lambda: ["lo"]),
+    )
+    monkeypatch.setattr(service.shutil, "which", lambda name: "/usr/sbin/wpa_cli")
+    calls = []
+
+    def fake_run(command, **_kwargs):
+        calls.append(command)
+        if command[-1] == "list_networks":
+            return SimpleNamespace(
+                returncode=0,
+                stdout="network id / ssid / bssid / flags\n3\tOld Network\tany\t\n",
+                stderr="",
+            )
+        return SimpleNamespace(returncode=0, stdout="OK", stderr="")
+
+    monkeypatch.setattr(service.subprocess, "run", fake_run)
+    confirm = service.h_wifi_profile_action({"action": "forget", "id": "3"})
+    assert confirm["confirm_required"] is True
+    assert len(calls) == 1
+
+    result = service.h_wifi_profile_action({
+        "action": "forget", "id": "3", "confirm": True,
+    })
+    assert result == {"ok": True, "state": "forgotten", "saved": True}
+    assert calls[-2:] == [
+        ["wpa_cli", "-i", "lo", "remove_network", "3"],
+        ["wpa_cli", "-i", "lo", "save_config"],
+    ]
