@@ -703,7 +703,7 @@ def h_network_status(args):
         else:
             connected, ssid, lvl, ip, bt_on = False, None, None, None, None
             wireless_available = False
-        signal_pct = {0: 20, 1: 45, 2: 70, 3: 95}.get(lvl, 0) \\
+        signal_pct = {0: 20, 1: 45, 2: 70, 3: 95}.get(lvl, 0) \
             if lvl is not None else 0
         hs_marker = DATA / ".hotspot_active"
         hotspot_on = hs_marker.exists()
