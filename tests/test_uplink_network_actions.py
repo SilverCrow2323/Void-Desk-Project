@@ -265,3 +265,43 @@ def test_wifi_forget_requires_explicit_confirmation_and_saves_profile(monkeypatc
         ["wpa_cli", "-i", "lo", "remove_network", "3"],
         ["wpa_cli", "-i", "lo", "save_config"],
     ]
+
+
+def test_hotspot_start_requires_confirmation_when_single_radio_may_drop_wifi(
+        tmp_path, monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service, "IS_DEVICE", True)
+    monkeypatch.setattr(service, "IS_VISUAL_CAPTURE", False)
+    monkeypatch.setattr(service, "DATA", tmp_path)
+    monkeypatch.setattr(service, "APP_DIR", tmp_path / "VoidDesk")
+    monkeypatch.setattr(
+        service, "deskinfo",
+        SimpleNamespace(wifi_status=lambda: (True, "Home", 3, "wlan0", "192.168.1.2")),
+    )
+    monkeypatch.setenv("VD_WLAN1_SYSFS", str(tmp_path / "no-secondary-radio"))
+
+    def fail_run(*_args, **_kwargs):
+        raise AssertionError("hotspot must not start before explicit confirmation")
+
+    monkeypatch.setattr(service.subprocess, "run", fail_run)
+    result = service.h_hotspot_toggle({})
+    assert result["ok"] is False
+    assert result["confirm_required"] is True
+
+
+def test_hotspot_start_does_not_assume_no_wifi_when_interface_probe_is_missing(
+        tmp_path, monkeypatch):
+    service = load_service()
+    monkeypatch.setattr(service, "IS_DEVICE", True)
+    monkeypatch.setattr(service, "IS_VISUAL_CAPTURE", False)
+    monkeypatch.setattr(service, "DATA", tmp_path)
+    monkeypatch.setattr(service, "APP_DIR", tmp_path / "VoidDesk")
+    monkeypatch.setattr(service, "deskinfo", None)
+    monkeypatch.setenv("VD_WLAN1_SYSFS", str(tmp_path / "no-secondary-radio"))
+
+    def fail_run(*_args, **_kwargs):
+        raise AssertionError("unknown radio topology must require confirmation")
+
+    monkeypatch.setattr(service.subprocess, "run", fail_run)
+    result = service.h_hotspot_toggle({})
+    assert result["confirm_required"] is True
