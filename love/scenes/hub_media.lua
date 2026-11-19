@@ -1,4 +1,6 @@
 local dashboard = require("core.dashboard_screen")
+local layouts = require("core.hub_layouts")
+local atmosphere = require("effects.hub_atmosphere")
 local bridge    = require("core.bridge")
 local sm        = require("core.scene_manager")
 local nodes     = require("core.nodes")
@@ -24,6 +26,15 @@ return dashboard.new({
     widget_height = 128,
     row_height = 50,
     status = "Media control center",
+    background_draw = function(W,H,t,_nc,alpha)
+        atmosphere.draw(W,H,t,"media",{0.91,0.31,0.75},alpha)
+    end,
+    menu_draw = function(scene,items,selected,rect)
+        return layouts.media(scene,items,selected,rect,{0.91,0.31,0.75},1)
+    end,
+    on_navigate = function(action,selected,count)
+        return layouts.navigate_media(action,selected,count)
+    end,
 
     on_enter = function(scene) refresh(scene, false) end,
     on_update = function(scene, dt)
