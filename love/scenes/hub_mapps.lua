@@ -1,4 +1,6 @@
 local dashboard = require("core.dashboard_screen")
+local layouts = require("core.hub_layouts")
+local atmosphere = require("effects.hub_atmosphere")
 local bridge    = require("core.bridge")
 local sm        = require("core.scene_manager")
 local nodes     = require("core.nodes")
@@ -98,6 +100,15 @@ local scene = dashboard.new({
     node_idx = 1,
     widget_height = 90,
     status = "Application discovery",
+    background_draw = function(W,H,t,_nc,alpha)
+        atmosphere.draw(W,H,t,"apps",{0.78,0.82,0.90},alpha)
+    end,
+    menu_draw = function(scene,items,selected,rect,alpha)
+        return layouts.scroll_grid(scene,items,selected,rect,{0.78,0.82,0.90},alpha,2,"info",47)
+    end,
+    on_navigate = function(action,selected,count)
+        return layouts.navigate_grid(2,action,selected,count)
+    end,
 
     on_enter = function(scene)
         refresh(scene, false)
