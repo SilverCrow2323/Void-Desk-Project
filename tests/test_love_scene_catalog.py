@@ -112,3 +112,95 @@ def test_forge_uses_red_circular_module_carousel_and_curated_installer():
         assert f'{{"{package}"' in installer
     assert 'bridge.call("job_start"' in installer
     assert 'bridge.call("apt_catalog"' in installer
+
+
+def test_uplink_has_dedicated_cyan_dashboard_and_detail_scenes():
+    source = (LOVE / "scenes" / "hub_uplink.lua").read_text(encoding="utf-8")
+    for label in ("WI-FI", "HOTSPOT", "BLUETOOTH", "B.S. SERVER",
+                  "TAILSCALE", "SYNCTHING", "FTP", "NETWORK PROBE",
+                  "WI-FI SCANNER", "REFRESH CONNECTIONS"):
+        assert label in source
+    assert 'require("effects.uplink_bg")' in source
+    for route in ('wifi="hub_wifi"', 'hotspot="hub_hotspot"',
+                  'bt="hub_bluetooth"'):
+        assert route in source
+    for scene in ("hub_wifi", "hub_hotspot", "hub_bluetooth",
+                  "hub_network_tools", "hub_basestation", "hub_ftp"):
+        assert (LOVE / "scenes" / f"{scene}.lua").is_file()
+    capture = (LOVE / "core" / "visual_capture.lua").read_text(encoding="utf-8")
+    for scene in ("hub_wifi", "hub_hotspot", "hub_bluetooth",
+                  "hub_network_tools", "hub_basestation", "hub_ftp"):
+        assert f'name = "{scene}"' in capture
+
+
+
+def test_uplink_service_detail_screens_have_distinct_animated_motifs():
+    tailscale = (LOVE / "scenes" / "hub_tailscale.lua").read_text(encoding="utf-8")
+    syncthing = (LOVE / "scenes" / "hub_syncthing.lua").read_text(encoding="utf-8")
+    assert 'uplink_bg.draw(W, H, t, "mesh"' in tailscale
+    assert 'uplink_bg.draw(W, H, t, "transfer"' in syncthing
+    assert 'require("effects.uplink_bg")' in tailscale
+    assert 'require("effects.uplink_bg")' in syncthing
+
+
+def test_uplink_maintenance_refresh_uses_the_live_refresh_callback():
+    source = (LOVE / "scenes" / "hub_uplink.lua").read_text(encoding="utf-8")
+    assert "local refresh\nlocal function open(kind)" in source
+    assert 'if kind=="refresh" then refresh(); return true end' in source
+    assert "refresh=function()" in source
+
+
+def test_main_hubs_have_distinct_layouts_and_animated_atmospheres():
+    layouts = (LOVE / "core" / "hub_layouts.lua").read_text(encoding="utf-8")
+    atmosphere = (LOVE / "effects" / "hub_atmosphere.lua").read_text(encoding="utf-8")
+    dashboard = (LOVE / "core" / "dashboard_screen.lua").read_text(encoding="utf-8")
+    for mode in ("media", "workshop", "toolbox", "settings", "info",
+                 "apps", "external", "diagnostics"):
+        assert f"{mode}=" in atmosphere or f"{mode} =" in atmosphere
+    for layout in ("function M.media", "function M.workshop",
+                   "function M.toolbox", "function M.settings",
+                   "function M.info", "function M.scroll_grid",
+                   "function M.diagnostics"):
+        assert layout in layouts
+    assert "local menu_draw = config.menu_draw" in dashboard
+    assert "local on_navigate = config.on_navigate" in dashboard
+    assert "custom_menu_drawn" in dashboard
+
+    scene_modes = {
+        "hub_media.lua": '"media"',
+        "hub_workshop.lua": '"workshop"',
+        "hub_toolbox.lua": '"toolbox"',
+        "hub_settings.lua": '"settings"',
+        "hub_info.lua": '"info"',
+        "hub_mapps.lua": '"apps"',
+        "hub_external.lua": '"external"',
+        "hub_diagnostics.lua": '"diagnostics"',
+    }
+    for filename, mode in scene_modes.items():
+        source = (LOVE / "scenes" / filename).read_text(encoding="utf-8")
+        assert "menu_draw =" in source
+        assert mode in source
+
+
+def test_wifi_scene_manages_saved_profiles_with_confirmation_and_keeps_muos_for_new_credentials():
+    wifi = (LOVE / "scenes" / "hub_wifi.lua").read_text(encoding="utf-8")
+    service = (ROOT / "service" / "voiddesk_service.py").read_text(encoding="utf-8")
+    for label in ("SAVED PROFILES", "NEARBY NETWORKS", "A CONNECT",
+                  "X FORGET", "START DISCONNECT", "L1/R1 SWITCH TAB"):
+        assert label in wifi
+    assert 'bridge.call("wifi_saved"' in wifi
+    assert 'bridge.call("wifi_profile_action"' in wifi
+    assert "confirm_forget" in wifi
+    assert "credentials" in wifi.lower() or "muOS" in wifi
+    assert '"wifi_saved": h_wifi_saved' in service
+    assert '"wifi_profile_action": h_wifi_profile_action' in service
+
+
+def test_hotspot_activation_requires_explicit_single_radio_confirmation():
+    service = (ROOT / "service" / "voiddesk_service.py").read_text(encoding="utf-8")
+    uplink = (LOVE / "scenes" / "hub_uplink.lua").read_text(encoding="utf-8")
+    hotspot = (LOVE / "scenes" / "hub_hotspot.lua").read_text(encoding="utf-8")
+    assert '"confirm_required": True' in service
+    assert "st.confirm_hotspot" in uplink
+    assert "st.confirm" in hotspot
+    assert 'confirm_disruption=confirm_disruption==true' in uplink

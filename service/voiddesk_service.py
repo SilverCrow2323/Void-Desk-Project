@@ -631,21 +631,87 @@ def _gateway_ip():
         pass
     return ""
 
+def _wifi_radio_state(connected):
+    """Return True/False when rfkill can report Wi-Fi radio state, else None."""
+    if shutil.which("rfkill"):
+        try:
+            result = subprocess.run(
+                ["rfkill", "list", "wifi"], capture_output=True,
+                text=True, timeout=3, check=False,
+            )
+            output = (result.stdout or "").lower()
+            if result.returncode == 0 and output:
+                blocked = ("soft blocked: yes" in output or
+                           "hard blocked: yes" in output)
+                return not blocked
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    return True if connected else None
+
+
+def _bluetooth_snapshot(fallback_powered=None):
+    """Read adapter alias, power and paired count without inventing an adapter."""
+    available = bool(shutil.which("bluetoothctl"))
+    name = "—"
+    powered = fallback_powered
+    paired_count = 0
+    if not available:
+        return {"available": False, "name": name,
+                "on": False, "count": 0}
+    try:
+        result = subprocess.run(
+            ["bluetoothctl", "show"], capture_output=True,
+            text=True, timeout=3, check=False,
+        )
+        output = result.stdout or ""
+        controller_present = any(
+            line.strip().lower().startswith("controller ")
+            for line in output.splitlines()
+        )
+        if result.returncode != 0 or not controller_present:
+            return {"available": False, "name": name,
+                    "on": False, "count": 0}
+        for line in output.splitlines():
+            line = line.strip()
+            if line.startswith("Alias:"):
+                name = line.split(":", 1)[1].strip() or name
+            elif line.startswith("Name:") and name == "—":
+                name = line.split(":", 1)[1].strip() or name
+            elif line.startswith("Powered:"):
+                powered = line.split(":", 1)[1].strip().lower() == "yes"
+        paired = subprocess.run(
+            ["bluetoothctl", "paired-devices"], capture_output=True,
+            text=True, timeout=3, check=False,
+        )
+        paired_count = sum(
+            1 for line in (paired.stdout or "").splitlines()
+            if re.match(r"^Device\s+[0-9A-Fa-f:]{17}\s+.+$", line.strip())
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return {"available": available, "name": name,
+            "on": bool(powered), "count": paired_count}
+
+
 def h_network_status(args):
     try:
         if IS_VISUAL_CAPTURE:
             return {"ok": True, "network": {
-                "wifi": {"connected": False, "ssid": "OFFLINE",
-                         "signal": 0, "ip": "—"},
-                "bt": {"on": False, "count": 0},
+                "wifi": {"available": True, "radio_on": True,
+                         "connected": True, "ssid": "VOIDDESK-LAB",
+                         "signal": 95, "ip": "192.168.1.42"},
+                "bt": {"available": True, "on": True, "name": "VOIDDESK-H700",
+                       "count": 2},
                 "hotspot": {"on": False, "ssid": "—"},
-                "info": {"hostname": "VISUAL-CAPTURE", "gateway": "—"},
+                "info": {"hostname": "VOIDDESK-H700", "gateway": "192.168.1.1"},
             }}
         if deskinfo is not None:
             connected, ssid, lvl, _iface, ip = deskinfo.wifi_status()
             bt_on = deskinfo.bt_status()
+            wireless_available = bool(deskinfo.wireless_ifaces())
         else:
             connected, ssid, lvl, ip, bt_on = False, None, None, None, None
+            wireless_available = False
         signal_pct = {0: 20, 1: 45, 2: 70, 3: 95}.get(lvl, 0) \
             if lvl is not None else 0
         hs_marker = DATA / ".hotspot_active"
@@ -654,13 +720,21 @@ def h_network_status(args):
         if hotspot_on:
             try:
                 hotspot_ssid = hs_marker.read_text().strip()
-            except Exception:
+            except OSError:
                 pass
+        bt = _bluetooth_snapshot(bt_on)
         return {"ok": True, "network": {
-            "wifi": {"connected": bool(connected), "ssid": ssid or "—",
+            "wifi": {"available": wireless_available,
+                     "radio_on": _wifi_radio_state(bool(connected)),
+                     "connected": bool(connected), "ssid": ssid or "—",
                      "signal": signal_pct, "ip": ip or "—"},
-            "bt": {"on": bool(bt_on), "count": 0},
-            "hotspot": {"on": hotspot_on, "ssid": hotspot_ssid or "—"},
+            "bt": bt,
+            "hotspot": {
+                "on": hotspot_on, "ssid": hotspot_ssid or "—",
+                "single_radio": not Path(os.environ.get(
+                    "VD_WLAN1_SYSFS", "/sys/class/net/wlan1"
+                )).exists(),
+            },
             "info": {"hostname": platform.node(),
                      "gateway": _gateway_ip() or "—"},
         }}
@@ -1519,6 +1593,21 @@ def h_hotspot_toggle(args):
     if dcheck:
         return dcheck
     active = (DATA / ".hotspot_active").exists()
+    if not active and IS_DEVICE:
+        connected = True
+        if deskinfo is not None:
+            try:
+                connected = bool(deskinfo.wifi_status()[0])
+            except Exception:
+                connected = True
+        single_radio = not Path(os.environ.get(
+            "VD_WLAN1_SYSFS", "/sys/class/net/wlan1"
+        )).exists()
+        if connected and single_radio and args.get("confirm_disruption") is not True:
+            return {
+                "ok": False, "confirm_required": True,
+                "reason": "single-radio hotspot may interrupt the upstream Wi-Fi connection",
+            }
     script = APP_DIR / "bin" / \
         ("vd_hotspot_stop.sh" if active else "vd_hotspot_start.sh")
     try:
@@ -1534,7 +1623,136 @@ def h_hotspot_toggle(args):
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
+def _wifi_control_iface():
+    """Choose a real wireless interface discovered locally; never accept one from IPC."""
+    if deskinfo is None:
+        return None
+    try:
+        interfaces = deskinfo.wireless_ifaces() or []
+    except Exception:
+        interfaces = []
+    for iface in interfaces:
+        if isinstance(iface, str) and re.fullmatch(r"[A-Za-z0-9_.:-]{1,15}", iface):
+            if Path("/sys/class/net", iface).exists():
+                return iface
+    return None
+
+
+def _wpa_cli(iface, *args, timeout=5):
+    if not isinstance(iface, str) or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,15}", iface):
+        return {"ok": False, "error": "invalid wireless interface"}
+    if not shutil.which("wpa_cli"):
+        return {"ok": False, "error": "wpa_cli is not available"}
+    result = subprocess.run(
+        ["wpa_cli", "-i", iface] + [str(value) for value in args],
+        capture_output=True, text=True, timeout=timeout, check=False,
+    )
+    output = (result.stdout or result.stderr or "").strip()
+    if result.returncode != 0 or (args and args[0] != "list_networks" and output.upper().splitlines()[-1:] != ["OK"]):
+        return {"ok": False, "error": output[-240:] or "wpa_supplicant command failed"}
+    return {"ok": True, "output": output}
+
+
+def _wifi_saved_profiles(iface):
+    response = _wpa_cli(iface, "list_networks")
+    if not response.get("ok"):
+        return response
+    profiles = []
+    for line in response["output"].splitlines()[1:]:
+        match = re.match(
+            r"^\s*(\d+)\s+(.+?)\s+(any|[0-9A-Fa-f:]{17})(?:\s+(\[.*\]))?\s*$",
+            line,
+        )
+        if not match:
+            continue
+        flags = match.group(4) or ""
+        profiles.append({
+            "id": match.group(1),
+            "ssid": match.group(2).strip(),
+            "current": "[CURRENT]" in flags,
+            "disabled": "[DISABLED]" in flags,
+        })
+    return {"ok": True, "profiles": profiles, "interface": iface}
+
+
+def h_wifi_saved(args):
+    """List saved wpa_supplicant profiles without exposing PSKs or config contents."""
+    if IS_VISUAL_CAPTURE:
+        return {"ok": True, "interface": "wlan0", "profiles": [
+            {"id": "0", "ssid": "VOIDDESK-LAB", "current": True, "disabled": False},
+            {"id": "1", "ssid": "Workshop-Guest", "current": False, "disabled": False},
+        ]}
+    blocked = device_only("wifi_saved")
+    if blocked:
+        return blocked
+    iface = _wifi_control_iface()
+    if not iface:
+        return {"ok": False, "error": "no wireless interface is available"}
+    try:
+        return _wifi_saved_profiles(iface)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"ok": False, "error": "cannot list saved Wi-Fi profiles: " + str(exc)[:160]}
+
+
+def h_wifi_profile_action(args):
+    """Select, reconnect, disconnect or forget one existing saved profile."""
+    blocked = device_only("wifi_profile_action")
+    if blocked:
+        return blocked
+    action = str(args.get("action") or "")
+    if action not in ("select", "reconnect", "disconnect", "forget"):
+        return {"ok": False, "error": "unsupported Wi-Fi profile action"}
+    iface = _wifi_control_iface()
+    if not iface:
+        return {"ok": False, "error": "no wireless interface is available"}
+    try:
+        if action == "disconnect":
+            result = _wpa_cli(iface, "disconnect")
+            if result.get("ok"):
+                return {"ok": True, "state": "disconnected"}
+            return result
+        if action == "reconnect":
+            result = _wpa_cli(iface, "reassociate")
+            if result.get("ok"):
+                return {"ok": True, "state": "reconnecting"}
+            return result
+        profile_id = str(args.get("id") or "")
+        if not re.fullmatch(r"\d{1,6}", profile_id):
+            return {"ok": False, "error": "a valid saved profile ID is required"}
+        profiles = _wifi_saved_profiles(iface)
+        if not profiles.get("ok"):
+            return profiles
+        profile = next((p for p in profiles["profiles"] if p["id"] == profile_id), None)
+        if profile is None:
+            return {"ok": False, "error": "saved Wi-Fi profile no longer exists"}
+        if action == "forget":
+            if args.get("confirm") is not True:
+                return {"ok": False, "confirm_required": True,
+                        "reason": "forgetting removes this saved network profile"}
+            removed = _wpa_cli(iface, "remove_network", profile_id)
+            if not removed.get("ok"):
+                return removed
+            saved = _wpa_cli(iface, "save_config")
+            return {"ok": True, "state": "forgotten",
+                    "saved": bool(saved.get("ok"))}
+        selected = _wpa_cli(iface, "select_network", profile_id)
+        if not selected.get("ok"):
+            return selected
+        associated = _wpa_cli(iface, "reassociate")
+        if not associated.get("ok"):
+            return associated
+        return {"ok": True, "state": "connecting", "ssid": profile["ssid"]}
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"ok": False, "error": "Wi-Fi profile action failed: " + str(exc)[:160]}
+
+
 def h_wifi_scan(args):
+    if IS_VISUAL_CAPTURE:
+        return {"ok": True, "networks": [
+            {"ssid": "VOIDDESK-LAB", "signal": 95, "secure": True},
+            {"ssid": "Workshop-Guest", "signal": 72, "secure": True},
+            {"ssid": "Open-Test-Net", "signal": 41, "secure": False},
+        ]}
     if not IS_DEVICE:
         return {"ok": True, "networks": []}
     nets, seen = [], set()
@@ -1570,7 +1788,141 @@ def h_wifi_scan(args):
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
+def h_wifi_action(args):
+    """Control the Wi-Fi radio only through the platform rfkill interface."""
+    blocked = device_only("wifi_action")
+    if blocked:
+        return blocked
+    action = str(args.get("action") or "")
+    if action not in ("radio_on", "radio_off"):
+        return {"ok": False, "error": "unsupported Wi-Fi action"}
+    if action == "radio_off" and (DATA / ".hotspot_active").exists():
+        return {"ok": False,
+                "error": "stop the hotspot before disabling the Wi-Fi radio"}
+    if not shutil.which("rfkill"):
+        return {"ok": False, "error": "rfkill is not available on this system"}
+    command = ["rfkill", "unblock" if action == "radio_on" else "block", "wifi"]
+    try:
+        result = subprocess.run(command, capture_output=True, text=True,
+                                timeout=5, check=False)
+        if result.returncode:
+            detail = (result.stderr or result.stdout or "rfkill failed")[-240:]
+            return {"ok": False, "error": detail}
+        return {"ok": True, "state": "on" if action == "radio_on" else "off"}
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"ok": False, "error": "Wi-Fi radio action failed: " + str(exc)[:160]}
+
+
+def h_bt_action(args):
+    """Allowlisted Bluetooth power and paired-device actions."""
+    blocked = device_only("bt_action")
+    if blocked:
+        return blocked
+    action = str(args.get("action") or "")
+    commands = {
+        "power_on": ["power", "on"],
+        "power_off": ["power", "off"],
+    }
+    if action == "remove" and args.get("confirm") is not True:
+        return {"ok": False, "confirm_required": True,
+                "reason": "removing a Bluetooth association requires confirmation"}
+    if action in ("pair", "trust", "connect", "disconnect", "remove"):
+        address = str(args.get("mac") or "")
+        if not re.fullmatch(r"[0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5}", address):
+            return {"ok": False, "error": "a valid Bluetooth device address is required"}
+        commands[action] = [action, address]
+    if action in ("trust", "disconnect", "remove"):
+        try:
+            paired = subprocess.run(
+                ["bluetoothctl", "paired-devices"], capture_output=True,
+                text=True, timeout=3, check=False,
+            )
+            paired_addresses = {
+                line.split(" ", 2)[1].upper()
+                for line in (paired.stdout or "").splitlines()
+                if len(line.split(" ", 2)) == 3
+                and line.split(" ", 2)[0] == "Device"
+            }
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return {"ok": False, "error": "cannot verify Bluetooth pairing: " + str(exc)[:120]}
+        if address.upper() not in paired_addresses:
+            return {"ok": False, "error": "Bluetooth device is not paired"}
+    command = commands.get(action)
+    if command is None:
+        return {"ok": False, "error": "unsupported Bluetooth action"}
+    if not shutil.which("bluetoothctl"):
+        return {"ok": False, "error": "bluetoothctl is not available"}
+    try:
+        result = subprocess.run(
+            ["bluetoothctl"] + command, capture_output=True,
+            text=True, timeout=15 if action in ("pair", "connect") else 5,
+            check=False,
+        )
+        output = (result.stdout or result.stderr or "").strip()[-240:]
+        if result.returncode:
+            return {"ok": False, "error": output or "Bluetooth action failed"}
+        return {"ok": True, "action": action, "output": output or "Done"}
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"ok": False, "error": "Bluetooth action failed: " + str(exc)[:160]}
+
+
+def h_network_probe(args):
+    """Run bounded, fixed-target route, ICMP and DNS diagnostics."""
+    if IS_VISUAL_CAPTURE:
+        return {"ok": True, "probe": {
+            "gateway": "192.168.1.1", "interface": "wlan0",
+            "internet": True, "dns": True, "latency_ms": 8.4,
+        }}
+    gateway = _gateway_ip() or "—"
+    interface = "—"
+    if shutil.which("ip"):
+        try:
+            route = subprocess.run(
+                ["ip", "-4", "route", "show", "default"],
+                capture_output=True, text=True, timeout=3, check=False,
+            )
+            parts = (route.stdout or "").split()
+            if "dev" in parts:
+                interface = parts[parts.index("dev") + 1]
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    internet = None
+    latency = None
+    if shutil.which("ping"):
+        try:
+            ping = subprocess.run(
+                ["ping", "-c", "1", "-W", "2", "1.1.1.1"],
+                capture_output=True, text=True, timeout=3, check=False,
+            )
+            output = (ping.stdout or "") + (ping.stderr or "")
+            internet = ping.returncode == 0
+            match = re.search(r"time[=<]([0-9.]+)\s*ms", output)
+            if match:
+                latency = round(float(match.group(1)), 1)
+        except (OSError, subprocess.TimeoutExpired):
+            internet = False
+    dns = None
+    if shutil.which("getent"):
+        try:
+            lookup = subprocess.run(
+                ["getent", "ahostsv4", "example.com"],
+                capture_output=True, text=True, timeout=3, check=False,
+            )
+            dns = lookup.returncode == 0 and bool((lookup.stdout or "").strip())
+        except (OSError, subprocess.TimeoutExpired):
+            dns = False
+    return {"ok": True, "probe": {
+        "gateway": gateway, "interface": interface,
+        "internet": internet, "dns": dns, "latency_ms": latency,
+    }}
+
+
 def h_bt_scan(args):
+    if IS_VISUAL_CAPTURE:
+        return {"ok": True, "devices": [
+            {"mac": "00:11:22:33:44:55", "name": "VOIDDESK Controller", "paired": True},
+            {"mac": "10:20:30:40:50:60", "name": "Wireless Headphones", "paired": False},
+        ]}
     if not IS_DEVICE:
         return {"ok": True, "devices": []}
     if not shutil.which("bluetoothctl"):
@@ -1584,12 +1936,24 @@ def h_bt_scan(args):
             pass  # expected: "scan on" blocks until stopped
         subprocess.run(["bluetoothctl", "scan", "off"],
                        capture_output=True, text=True, timeout=3)
+        paired_result = subprocess.run(
+            ["bluetoothctl", "paired-devices"],
+            capture_output=True, text=True, timeout=3,
+        )
+        paired_macs = set()
+        for line in (paired_result.stdout or "").splitlines():
+            parts = line.split(" ", 2)
+            if len(parts) == 3 and parts[0] == "Device":
+                paired_macs.add(parts[1].upper())
         r = subprocess.run(["bluetoothctl", "devices"],
                            capture_output=True, text=True, timeout=3)
         for ln in r.stdout.splitlines():
             p = ln.split(" ", 2)
             if len(p) == 3 and p[0] == "Device":
-                devs.append({"mac": p[1], "name": p[2]})
+                devs.append({
+                    "mac": p[1], "name": p[2],
+                    "paired": p[1].upper() in paired_macs,
+                })
         return {"ok": True, "devices": devs}
     except Exception as e:
         return {"ok": False, "error": str(e)}
@@ -2115,6 +2479,11 @@ HANDLERS = {
     "system_info": h_system_info,
     "gh_fetch_releases": h_gh_fetch_releases,
     "network_status": h_network_status,
+    "network_probe": h_network_probe,
+    "wifi_action": h_wifi_action,
+    "wifi_saved": h_wifi_saved,
+    "wifi_profile_action": h_wifi_profile_action,
+    "bt_action": h_bt_action,
     "system_status": h_system_status,
     "shell_start": h_shell_start,
     "shell_poll": h_shell_poll,

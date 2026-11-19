@@ -1,8 +1,10 @@
 local dashboard = require("core.dashboard_screen")
+local layouts = require("core.hub_layouts")
 local bridge = require("core.bridge")
 local sm = require("core.scene_manager")
 local nodes = require("core.nodes")
 local widgets = require("core.widgets")
+local uplink_bg = require("effects.uplink_bg")
 
 local items_for
 
@@ -179,6 +181,15 @@ local config = {
     widget_height = 132,
     row_height = 46,
     status = "Native muOS Web Service manager",
+    menu_draw = function(scene,items,selected,rect,alpha)
+        return layouts.scroll_grid(scene,items,selected,rect,{0.18,0.72,0.90},alpha,2,"uplink",44)
+    end,
+    on_navigate = function(action,selected,count)
+        return layouts.navigate_grid(2,action,selected,count)
+    end,
+    background_draw = function(W, H, t, _nc, alpha)
+        uplink_bg.draw(W, H, t, "transfer", {0.18,0.72,0.90}, alpha)
+    end,
     on_enter = function(scene) refresh(scene, false) end,
     on_update = function(scene, dt)
         scene._t = (scene._t or 0) + dt

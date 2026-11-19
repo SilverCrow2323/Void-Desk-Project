@@ -1,4 +1,6 @@
 local dashboard = require("core.dashboard_screen")
+local layouts = require("core.hub_layouts")
+local atmosphere = require("effects.hub_atmosphere")
 local bridge    = require("core.bridge")
 local sm        = require("core.scene_manager")
 local nodes     = require("core.nodes")
@@ -77,6 +79,15 @@ local scene = dashboard.new({
     widget_height = 130,
     row_height = 50,
     status = "Project archive",
+    background_draw = function(W,H,t,_nc,alpha)
+        atmosphere.draw(W,H,t,"info",{0.59,0.63,0.71},alpha)
+    end,
+    menu_draw = function(scene,items,selected,rect,alpha)
+        return layouts.info(scene,items,selected,rect,{0.59,0.63,0.71},alpha)
+    end,
+    on_navigate = function(action,selected,count)
+        return layouts.navigate_grid(3,action,selected,count)
+    end,
     items = {},
     on_enter = function(sc) refresh(sc) end,
     widgets_draw = function(sc, alpha)

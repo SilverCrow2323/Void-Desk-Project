@@ -1,4 +1,6 @@
 local dashboard = require("core.dashboard_screen")
+local layouts = require("core.hub_layouts")
+local atmosphere = require("effects.hub_atmosphere")
 local sm        = require("core.scene_manager")
 local nodes     = require("core.nodes")
 local widgets   = require("core.widgets")
@@ -76,6 +78,15 @@ local config = {
     node_idx = 4,
     widget_height = 130,
     status = "VoidDesk ecosystem apps",
+    background_draw = function(W,H,t,_nc,alpha)
+        atmosphere.draw(W,H,t,"external",{0.37,0.82,0.55},alpha)
+    end,
+    menu_draw = function(scene,items,selected,rect,alpha)
+        return layouts.scroll_grid(scene,items,selected,rect,{0.37,0.82,0.55},alpha,2,"toolbox",44)
+    end,
+    on_navigate = function(action,selected,count)
+        return layouts.navigate_grid(2,action,selected,count)
+    end,
 
     on_enter = function(scene) refresh(scene, false) end,
 

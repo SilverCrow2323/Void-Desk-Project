@@ -1,4 +1,6 @@
 local dashboard = require("core.dashboard_screen")
+local layouts = require("core.hub_layouts")
+local atmosphere = require("effects.hub_atmosphere")
 local bridge    = require("core.bridge")
 local sm        = require("core.scene_manager")
 local nodes     = require("core.nodes")
@@ -31,9 +33,18 @@ end
 return dashboard.new({
     title = "RT:TOOLBOX",
     node_idx = 4,
-    widget_height = L.WIDGET_H,
+    widget_height = 68,
     row_height = L.MENU_ROW_H,
     status = "Productivity tools",
+    background_draw = function(W,H,t,_nc,alpha)
+        atmosphere.draw(W,H,t,"toolbox",{0.37,0.82,0.55},alpha)
+    end,
+    menu_draw = function(scene,items,selected,rect,alpha)
+        return layouts.toolbox(scene,items,selected,rect,{0.37,0.82,0.55},alpha)
+    end,
+    on_navigate = function(action,selected,count)
+        return layouts.navigate_grid(3,action,selected,count)
+    end,
 
     on_enter = function(scene) refresh(scene, false) end,
     on_update = function(scene, dt)

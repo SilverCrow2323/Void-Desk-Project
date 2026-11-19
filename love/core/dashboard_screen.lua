@@ -28,6 +28,8 @@ function M.new(config)
     local widgets_draw = config.widgets_draw
     local on_enter = config.on_enter
     local on_update = config.on_update
+    local menu_draw = config.menu_draw
+    local on_navigate = config.on_navigate
     scene._data = {}
 
     local function get_live_items()
@@ -51,10 +53,19 @@ function M.new(config)
         input.clear()
         input.on("press", function(action)
             local live = get_live_items()
-            if action == "up" then
-                selected = math.max(1, selected - 1)
-            elseif action == "down" then
-                selected = math.min(#live, selected + 1)
+            if action == "up" or action == "down" or action == "left" or action == "right" then
+                local next_selection = nil
+                if on_navigate then
+                    local ok, result = pcall(on_navigate, action, selected, #live, scene)
+                    if ok then next_selection = result end
+                end
+                if type(next_selection) == "number" then
+                    selected = math.max(1, math.min(#live, math.floor(next_selection)))
+                elseif action == "up" then
+                    selected = math.max(1, selected - 1)
+                elseif action == "down" then
+                    selected = math.min(#live, selected + 1)
+                end
             elseif action == "a" then
                 local item = live[selected]
                 if item and item.action then
@@ -129,6 +140,11 @@ function M.new(config)
         local visible_rows = math.max(1, math.floor((menu_bottom - menu_top) / L.row_h))
 
         local live = get_live_items()
+        if #live > 0 then
+            selected = math.max(1, math.min(#live, selected))
+        else
+            selected = 1
+        end
 
         -- Ensure selection is visible
         if selected < scroll_offset + 1 then
@@ -138,64 +154,82 @@ function M.new(config)
         end
         scroll_offset = math.max(0, math.min(scroll_offset, math.max(0, #live - visible_rows)))
 
-        -- Menu items with scissor
-        love.graphics.setScissor(0, menu_top - 2, W, menu_bottom - menu_top + 4)
-        for i = 1, visible_rows do
-            local idx = scroll_offset + i
-            if idx > #live then break end
-            local item = live[idx]
-            local delay = 0.25 + (i - 1) * 0.03
-            local it = math.max(0, math.min(1, (t_enter - delay) / 0.2))
-            if it > 0.01 then
-                local y = menu_top + (i - 1) * L.row_h + (1 - it) * math.floor(10 * L.scale)
-                widgets.menu_row(16, y, W - 32, L.row_h - 2, {
-                    icon = item.icon, badge = item.badge,
-                    label = item.label or "", desc = item.desc,
-                    value = item.value, value_color = item.value_color,
-                    chevron = item.chevron ~= false and not item.value,
-                    selected = (idx == selected), theme = th,
-                    node_color = node_color, alpha = it,
-                })
+        -- Node-specific hub compositions can replace the standard menu.
+        -- They share the same selection, action and status lifecycle.
+        local custom_menu_drawn = false
+        if menu_draw then
+            local ok, result = pcall(menu_draw, scene, live, selected, {
+                x = 16, y = menu_top, width = W - 32,
+                height = menu_bottom - menu_top,
+                row_height = L.row_h, visible_rows = visible_rows,
+                scroll_offset = scroll_offset, screen_width = W,
+                screen_height = H, alpha = w_t,
+            })
+            custom_menu_drawn = ok and result ~= false
+            if not ok then
+                print("[dashboard] custom menu failed for " .. title .. ": " .. tostring(result))
             end
         end
-        love.graphics.setScissor()
 
-        -- Item spinners for jobs
-        for i = 1, visible_rows do
-            local idx = scroll_offset + i
-            if idx > #live then break end
-            local item = live[idx]
-            if item.label then
-                local n_active = jobs.count_for_name(item.label)
-                if n_active > 0 then
-                    local y = menu_top + (i - 1) * L.row_h
-                    local sx = W - math.floor(42 * L.scale)
-                    local sy = y + L.row_h / 2
-                    local t_now = love.timer.getTime()
-                    local c = item.job_color or node_color
-                    local rad = math.floor(6 * L.scale)
-                    for k = 0, 5 do
-                        local ang = t_now * 4 + k * math.pi / 3
-                        local a = 0.3 + 0.7 * (1 - k / 6)
-                        love.graphics.setColor(c[1], c[2], c[3], a)
-                        love.graphics.circle("fill",
-                            sx + math.cos(ang) * rad,
-                            sy + math.sin(ang) * rad, math.max(1, rad/4))
+        if not custom_menu_drawn then
+            -- Menu items with scissor
+            love.graphics.setScissor(0, menu_top - 2, W, menu_bottom - menu_top + 4)
+            for i = 1, visible_rows do
+                local idx = scroll_offset + i
+                if idx > #live then break end
+                local item = live[idx]
+                local delay = 0.25 + (i - 1) * 0.03
+                local it = math.max(0, math.min(1, (t_enter - delay) / 0.2))
+                if it > 0.01 then
+                    local y = menu_top + (i - 1) * L.row_h + (1 - it) * math.floor(10 * L.scale)
+                    widgets.menu_row(16, y, W - 32, L.row_h - 2, {
+                        icon = item.icon, badge = item.badge,
+                        label = item.label or "", desc = item.desc,
+                        value = item.value, value_color = item.value_color,
+                        chevron = item.chevron ~= false and not item.value,
+                        selected = (idx == selected), theme = th,
+                        node_color = node_color, alpha = it,
+                    })
+                end
+            end
+            love.graphics.setScissor()
+
+            -- Item spinners for active jobs
+            for i = 1, visible_rows do
+                local idx = scroll_offset + i
+                if idx > #live then break end
+                local item = live[idx]
+                if item.label then
+                    local n_active = jobs.count_for_name(item.label)
+                    if n_active > 0 then
+                        local y = menu_top + (i - 1) * L.row_h
+                        local sx = W - math.floor(42 * L.scale)
+                        local sy = y + L.row_h / 2
+                        local t_now = love.timer.getTime()
+                        local c = item.job_color or node_color
+                        local rad = math.floor(6 * L.scale)
+                        for k = 0, 5 do
+                            local ang = t_now * 4 + k * math.pi / 3
+                            local a = 0.3 + 0.7 * (1 - k / 6)
+                            love.graphics.setColor(c[1], c[2], c[3], a)
+                            love.graphics.circle("fill",
+                                sx + math.cos(ang) * rad,
+                                sy + math.sin(ang) * rad, math.max(1, rad/4))
+                        end
                     end
                 end
             end
-        end
 
-        -- Scroll indicators
-        if scroll_offset > 0 then
-            pcall(icon.draw, "arrow_up", W - math.floor(26 * L.scale),
-                  menu_top - math.floor(4 * L.scale),
-                  math.floor(16 * L.scale), node_color, { alpha = 0.6 })
-        end
-        if scroll_offset + visible_rows < #live then
-            pcall(icon.draw, "arrow_down", W - math.floor(26 * L.scale),
-                  menu_bottom - math.floor(14 * L.scale),
-                  math.floor(16 * L.scale), node_color, { alpha = 0.6 })
+            if scroll_offset > 0 then
+                pcall(icon.draw, "arrow_up", W - math.floor(26 * L.scale),
+                      menu_top - math.floor(4 * L.scale),
+                      math.floor(16 * L.scale), node_color, { alpha = 0.6 })
+            end
+            if scroll_offset + visible_rows < #live then
+                pcall(icon.draw, "arrow_down", W - math.floor(26 * L.scale),
+                      menu_bottom - math.floor(14 * L.scale),
+                      math.floor(16 * L.scale), node_color, { alpha = 0.6 })
+            end
         end
 
         -- Status strip (if jobs active)

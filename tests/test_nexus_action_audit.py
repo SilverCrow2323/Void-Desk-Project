@@ -77,8 +77,24 @@ def test_forge_bridge_calls_are_registered_and_legacy_dead_rows_are_gone():
     )
     for stale in ("comp_install", "comp_autostart", "clihub_list"):
         assert stale not in forge
-    assert 'bridge.call("session_launch", {id = "xfce"}' in forge
-    assert 'apt_action = "install"' in forge
+    # The current Forge is a module launcher; session management belongs
+    # to START SESSION and package operations to the native APT manager.
+    for route in (
+        'sm.push("hub_forge_installer",{})',
+        'sm.push("hub_apt",{})',
+        'sm.push("hub_apt",{tab="INSTALLED"})',
+        'sm.push("hub_apt",{tab="SYSTEM"})',
+        'sm.push("hub_apt",{tab="JOBS"})',
+        'sm.push("hub_shell", {})',
+    ):
+        assert route in forge
+    apt = (LOVE / "scenes" / "hub_apt.lua").read_text(encoding="utf-8")
+    installer = (LOVE / "scenes" / "hub_forge_installer.lua").read_text(encoding="utf-8")
+    assert 'bridge.call("job_start"' in apt
+    assert 'bridge.call("apt_catalog"' in apt
+    assert 'bridge.call("job_start"' in installer
+    assert '"job_start": h_job_start' in service
+    assert '"apt_catalog": h_apt_catalog' in service
 
 
 def test_muos_apps_scene_builds_a_dynamic_selectable_application_list():
