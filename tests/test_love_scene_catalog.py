@@ -85,3 +85,17 @@ def test_all_love_bridge_commands_are_registered_by_the_service():
         ))
     missing = sorted(called - registered)
     assert not missing, "LÖVE bridge commands without service handlers: " + ", ".join(missing)
+
+
+def test_session_hub_catalog_distinguishes_supported_and_planned_desktops():
+    source = (LOVE / "scenes" / "hub_session.lua").read_text(encoding="utf-8")
+    for env_id in ("xfce", "icewm", "lxde", "lxqt", "openbox", "fluxbox", "mate"):
+        assert f'id="{env_id}"' in source
+    assert 'supported=true' in source
+    assert 'planned=true' in source
+    # Only the three environments with existing install/launch paths are
+    # actionable; the catalogue must not silently pretend the others work.
+    for env_id in ("lxqt", "openbox", "fluxbox", "mate"):
+        assert f'id="{env_id}"' in source
+    assert "NOT AVAILABLE YET" in source
+    assert "REINSTALL NOT WIRED YET" in source
