@@ -138,6 +138,54 @@ function M.settings(_scene,items,selected,r,accent,alpha)
     return true
 end
 
+
+function M.scroll_grid(_scene,items,selected,r,accent,alpha,cols,kind,card_height)
+    cols=math.max(1,cols or 2)
+    local gap=7
+    local h=math.min(card_height or 48,math.max(30,(r.height-gap)/2))
+    local visible_rows=math.max(1,math.floor((r.height+gap)/(h+gap)))
+    local total_rows=math.max(1,math.ceil(#items/cols))
+    local selected_row=math.floor((selected-1)/cols)
+    local first_row=math.max(0,math.min(total_rows-visible_rows,
+        selected_row-visible_rows+1))
+    local w=(r.width-gap*(cols-1))/cols
+    for row=first_row,math.min(total_rows-1,first_row+visible_rows-1) do
+        for col=0,cols-1 do
+            local i=row*cols+col+1
+            if i<=#items then
+                local x=r.x+col*(w+gap)
+                local y=r.y+(row-first_row)*(h+gap)
+                draw_item(items[i],i,x,y,w,h,selected==i,accent,kind,alpha,true)
+            end
+        end
+    end
+    if first_row>0 then
+        C(accent,.45*alpha); love.graphics.polygon("fill",r.x+r.width-16,r.y-3,r.x+r.width-8,r.y-3,r.x+r.width-12,r.y-8)
+    end
+    if first_row+visible_rows<total_rows then
+        C(accent,.45*alpha); love.graphics.polygon("fill",r.x+r.width-16,r.y+r.height+3,r.x+r.width-8,r.y+r.height+3,r.x+r.width-12,r.y+r.height+8)
+    end
+    return true
+end
+
+function M.diagnostics(_scene,items,selected,r,accent,alpha)
+    local cols=2; local gap=8
+    local rows=math.max(1,math.ceil(#items/cols))
+    local w=(r.width-gap)/cols
+    local h=(r.height-gap*(rows-1))/rows
+    for i,item in ipairs(items) do
+        local col=(i-1)%cols; local row=math.floor((i-1)/cols)
+        local x=r.x+col*(w+gap); local y=r.y+row*(h+gap)
+        shell(x,y,w,h,selected==i,accent,"workshop",alpha)
+        pcall(icon.draw,item.icon or "info",x+10,y+10,20,
+            selected==i and accent or {.65,.75,.85},{alpha=alpha})
+        text(item.label or "Check",x+38,y+9,w-48,8,{.93,.96,.99},"left",true)
+        text(item.desc or "",x+38,y+23,w-48,6,{.55,.69,.79})
+        if item.value then text(item.value,x+10,y+h-15,w-20,7,accent,"right",true) end
+    end
+    return true
+end
+
 function M.info(_scene,items,selected,r,accent,alpha)
     local cols=3; local gap=7; local rows=math.max(1,math.ceil(#items/cols))
     local w=(r.width-gap*(cols-1))/cols; local h=(r.height-gap*(rows-1))/rows
