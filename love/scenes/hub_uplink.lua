@@ -2,7 +2,7 @@
 local sm=require("core.scene_manager"); local input=require("core.input"); local bridge=require("core.bridge")
 local font=require("core.font"); local icon=require("core.icon"); local bg=require("effects.uplink_bg")
 local M={}; local CYAN={.22,.80,.98}; local DIM={.48,.62,.71}
-local st={network={wifi={},hotspot={},bt={},info={}},tailscale={},sync={},focus=1,t=0,status="READING NETWORK STATE",refresh_t=0}
+local st={network={wifi={},hotspot={},bt={},info={}},tailscale={},sync={},focus=1,t=0,status="READING NETWORK STATE",refresh_t=0,confirm_hotspot=false}
 local quick={{title="WI-FI",icon="wifi",kind="wifi"},{title="HOTSPOT",icon="signal",kind="hotspot"},{title="BLUETOOTH",icon="bluetooth",kind="bt"}}
 local services={{title="B.S. SERVER",icon="globe",kind="basestation",sub="BaseStation PC companion"},{title="TAILSCALE",icon="uplink",kind="tailscale",sub="Private tailnet · peers · Taildrop"},{title="SYNCTHING",icon="refresh",kind="sync",sub="Folders · devices · sync state"},{title="FTP",icon="upload",kind="ftp",sub="FTPiercer transfer client"}}
 local maintenance={{title="NETWORK PROBE",desc="IP · gateway · DNS · internet reachability",icon="globe",kind="probe"},{title="WI-FI SCANNER",desc="Discover nearby wireless networks",icon="search",kind="wifi_scan"},{title="REFRESH CONNECTIONS",desc="Reload radio and service status",icon="refresh",kind="refresh"}}
@@ -19,14 +19,39 @@ refresh=function()
  bridge.call("tailscale_status",{},function(r) st.tailscale=r.ok and r or {error=r.error or "unavailable"} end)
  bridge.call("syncthing_status",{},function(r) st.sync=r.ok and r or {message=r.error or "unavailable"} end)
 end
+local function toggle_hotspot(confirm_disruption)
+ st.status="CHANGING HOTSPOT…"
+ bridge.call("hotspot_toggle",{confirm_disruption=confirm_disruption==true},function(r)
+  if r.confirm_required then
+   st.confirm_hotspot=true
+   st.status="CONFIRM · HOTSPOT MAY DROP WI-FI"
+  else
+   st.confirm_hotspot=false
+   st.status=r.ok and ("HOTSPOT "..string.upper(r.state or "UPDATED")) or ("HOTSPOT · "..tostring(r.error or r.reason or "failed"))
+   refresh()
+  end
+ end)
+end
 local function toggle_quick(i)
- if i==1 then local v=st.network.wifi or {}; if v.radio_on==nil then st.status="WI-FI RADIO CONTROL UNAVAILABLE"; return end; local a=v.radio_on and "radio_off" or "radio_on"; st.status="CHANGING WI-FI RADIO…"; bridge.call("wifi_action",{action=a},function(r) st.status=r.ok and ("WI-FI RADIO "..string.upper(r.state or "UPDATED")) or ("WI-FI · "..tostring(r.error or r.reason or "failed")); refresh() end)
- elseif i==2 then st.status="CHANGING HOTSPOT…"; bridge.call("hotspot_toggle",{},function(r) st.status=r.ok and ("HOTSPOT "..string.upper(r.state or "UPDATED")) or ("HOTSPOT · "..tostring(r.error or r.reason or "failed")); refresh() end)
- elseif i==3 then local v=st.network.bt or {}; if not v.available then st.status="BLUETOOTH ADAPTER UNAVAILABLE"; return end; local a=v.on and "power_off" or "power_on"; st.status="CHANGING BLUETOOTH POWER…"; bridge.call("bt_action",{action=a},function(r) st.status=r.ok and "BLUETOOTH POWER UPDATED" or ("BLUETOOTH · "..tostring(r.error or r.reason or "failed")); refresh() end) end
+ if i==1 then
+  local v=st.network.wifi or {}; if v.radio_on==nil then st.status="WI-FI RADIO CONTROL UNAVAILABLE"; return end
+  local a=v.radio_on and "radio_off" or "radio_on"; st.status="CHANGING WI-FI RADIO…"
+  bridge.call("wifi_action",{action=a},function(r) st.status=r.ok and ("WI-FI RADIO "..string.upper(r.state or "UPDATED")) or ("WI-FI · "..tostring(r.error or r.reason or "failed")); refresh() end)
+ elseif i==2 then toggle_hotspot(false)
+ elseif i==3 then
+  local v=st.network.bt or {}; if not v.available then st.status="BLUETOOTH ADAPTER UNAVAILABLE"; return end
+  local a=v.on and "power_off" or "power_on"; st.status="CHANGING BLUETOOTH POWER…"
+  bridge.call("bt_action",{action=a},function(r) st.status=r.ok and "BLUETOOTH POWER UPDATED" or ("BLUETOOTH · "..tostring(r.error or r.reason or "failed")); refresh() end)
+ end
 end
 function M.enter()
  st.focus=1; st.t=0; st.refresh_t=0; refresh(); input.clear()
  input.on("press",function(a)
+  if st.confirm_hotspot then
+   if a=="a" then toggle_hotspot(true); return
+   elseif a=="b" then st.confirm_hotspot=false; st.status="HOTSPOT START CANCELLED"; return
+   else return end
+  end
   if a=="left" or a=="up" then st.focus=(st.focus-2)%10+1 elseif a=="right" or a=="down" then st.focus=st.focus%10+1
   elseif a=="a" then if st.focus<=3 then open(quick[st.focus].kind) elseif st.focus<=7 then open(services[st.focus-3].kind) else open(maintenance[st.focus-7].kind) end
   elseif a=="x" and st.focus<=3 then toggle_quick(st.focus) elseif a=="y" then refresh() elseif a=="b" then sm.back() end
@@ -61,6 +86,16 @@ function M.draw()
  for i,item in ipairs(services) do local col=(i-1)%2; local row=math.floor((i-1)/2); draw_service(i+3,item,12+col*(sw+12),155+row*59,sw,52) end
  T("CONNECTION MAINTENANCE",13,278,W-26,8,{.35,.78,.94},"left",true)
  for i,item in ipairs(maintenance) do local y=292+(i-1)*34; local sel=st.focus==i+7; if sel then C(CYAN,.13); love.graphics.rectangle("fill",12,y,W-24,29,4,4); C(CYAN,.9); love.graphics.rectangle("line",12,y,W-24,29,4,4) end; icon.draw(item.icon,20,y+5,18,sel and CYAN or DIM); T(item.title,48,y+3,170,8,{.88,.93,.97},"left",true); T(item.desc,212,y+5,W-230,7,{.56,.68,.77}) end
- C({.012,.035,.052},.92); love.graphics.rectangle("fill",0,H-29,W,29); T(st.status,12,H-25,W-24,7,{.50,.82,.94},"center"); T("A OPEN   X POWER   Y REFRESH   ◀ ▶ NAVIGATE   B BACK",12,H-12,W-24,7,{.68,.82,.9},"center",true); love.graphics.setColor(1,1,1,1)
+ C({.012,.035,.052},.92); love.graphics.rectangle("fill",0,H-29,W,29); T(st.status,12,H-25,W-24,7,{.50,.82,.94},"center"); T("A OPEN   X POWER   Y REFRESH   ◀ ▶ NAVIGATE   B BACK",12,H-12,W-24,7,{.68,.82,.9},"center",true)
+ if st.confirm_hotspot then
+  C({.008,.018,.03},.88); love.graphics.rectangle("fill",0,0,W,H)
+  local bx,by,bw,bh=48,H*.34,W-96,130
+  C({.025,.065,.09},.99); love.graphics.rectangle("fill",bx,by,bw,bh,8,8)
+  C({1,.68,.28},.95); love.graphics.setLineWidth(2); love.graphics.rectangle("line",bx,by,bw,bh,8,8)
+  T("SINGLE-RADIO HOTSPOT",bx+12,by+14,bw-24,12,{1,.72,.36},"center",true)
+  T("Starting the access point may disconnect the current Wi-Fi connection. Continue?",bx+18,by+43,bw-36,9,{.89,.93,.97},"center")
+  T("A CONFIRM     B CANCEL",bx+12,by+94,bw-24,9,CYAN,"center",true)
+ end
+ love.graphics.setColor(1,1,1,1)
 end
 return M
