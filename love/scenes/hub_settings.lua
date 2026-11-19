@@ -19,8 +19,8 @@ return dashboard.new({
     background_draw = function(W,H,t,_nc,alpha)
         atmosphere.draw(W,H,t,"settings",{0.39,0.51,0.82},alpha)
     end,
-    menu_draw = function(scene,items,selected,rect)
-        return layouts.settings(scene,items,selected,rect,{0.39,0.51,0.82},1)
+    menu_draw = function(scene,items,selected,rect,alpha)
+        return layouts.settings(scene,items,selected,rect,{0.39,0.51,0.82},alpha)
     end,
 
     widgets_draw = function(scene, alpha)
