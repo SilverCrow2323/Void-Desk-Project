@@ -194,6 +194,7 @@ import pygame
 from desk import love_bridge  # LÖVE bridge (Andromeda)          # noqa: E402
 from desk.muos_video import init_muos_surface, poll_muos_events  # noqa: E402
 from desk.qwasar.nexus_adapter import compose_nexus_profile  # noqa: E402
+from desk.nexus_tree import draw_life_tree  # noqa: E402
 import evinput         # noqa: E402
 import fbdisplay       # noqa: E402
 import icons           # noqa: E402
@@ -11772,6 +11773,20 @@ class App(object):
                 positions[idx] = (sx, sy, depth)
         sun_sx, sun_sy = self._nexus_to_screen(0.0, 0.0, sel_wx, sel_wy,
                                                zoom)
+        # Organic branches sit beneath the planet nodes: the old Kid Desk
+        # planetarium remains intact, now read as a living navigation tree.
+        tree_positions = {0: (sun_sx, sun_sy)}
+        tree_positions.update({
+            idx: (item[0], item[1]) for idx, item in positions.items()
+        })
+        disabled_nodes = {
+            idx for idx, state in self.qwasar_nexus_node_states.items()
+            if state.get("enabled") is False
+        }
+        draw_life_tree(
+            self.surface, tree_positions, NEXUS_NODE_COLOR, self.sel,
+            t_now, disabled_nodes=disabled_nodes,
+        )
         order = sorted(positions.items(), key=lambda kv: kv[1][2])
         for idx, (sx, sy, depth) in order:
             sel = (idx == self.sel)
