@@ -1633,7 +1633,7 @@ def _wifi_control_iface():
         interfaces = []
     for iface in interfaces:
         if isinstance(iface, str) and re.fullmatch(r"[A-Za-z0-9_.:-]{1,15}", iface):
-            if Path("/sys/class/net") .joinpath(iface).exists():
+            if Path("/sys/class/net", iface).exists():
                 return iface
     return None
 
@@ -1648,7 +1648,7 @@ def _wpa_cli(iface, *args, timeout=5):
         capture_output=True, text=True, timeout=timeout, check=False,
     )
     output = (result.stdout or result.stderr or "").strip()
-    if result.returncode != 0 or output.upper().splitlines()[-1:] != ["OK"]:
+    if result.returncode != 0 or (args and args[0] != "list_networks" and output.upper().splitlines()[-1:] != ["OK"]):
         return {"ok": False, "error": output[-240:] or "wpa_supplicant command failed"}
     return {"ok": True, "output": output}
 
@@ -1660,7 +1660,7 @@ def _wifi_saved_profiles(iface):
     profiles = []
     for line in response["output"].splitlines()[1:]:
         match = re.match(
-            r"^\\s*(\\d+)\\s+(.+?)\\s+(any|[0-9A-Fa-f:]{17})(?:\\s+(\\[.*\\]))?\\s*$",
+            r"^\s*(\d+)\s+(.+?)\s+(any|[0-9A-Fa-f:]{17})(?:\s+(\[.*\]))?\s*$",
             line,
         )
         if not match:
@@ -1717,7 +1717,7 @@ def h_wifi_profile_action(args):
                 return {"ok": True, "state": "reconnecting"}
             return result
         profile_id = str(args.get("id") or "")
-        if not re.fullmatch(r"\\d{1,6}", profile_id):
+        if not re.fullmatch(r"\d{1,6}", profile_id):
             return {"ok": False, "error": "a valid saved profile ID is required"}
         profiles = _wifi_saved_profiles(iface)
         if not profiles.get("ok"):
