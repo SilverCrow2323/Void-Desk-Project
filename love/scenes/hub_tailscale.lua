@@ -1,4 +1,5 @@
 local dashboard = require("core.dashboard_screen")
+local layouts = require("core.hub_layouts")
 local bridge = require("core.bridge")
 local sm = require("core.scene_manager")
 local nodes = require("core.nodes")
@@ -183,6 +184,12 @@ local config = {
     widget_height = 142,
     row_height = 46,
     status = "Native service integration",
+    menu_draw = function(scene,items,selected,rect,alpha)
+        return layouts.scroll_grid(scene,items,selected,rect,{0.22,0.80,0.98},alpha,2,"uplink",44)
+    end,
+    on_navigate = function(action,selected,count)
+        return layouts.navigate_grid(2,action,selected,count)
+    end,
     background_draw = function(W, H, t, _nc, alpha)
         uplink_bg.draw(W, H, t, "mesh", {0.22,0.80,0.98}, alpha)
     end,
