@@ -8,11 +8,12 @@ local services={{title="B.S. SERVER",icon="globe",kind="basestation",sub="BaseSt
 local maintenance={{title="NETWORK PROBE",desc="IP · gateway · DNS · internet reachability",icon="globe",kind="probe"},{title="WI-FI SCANNER",desc="Discover nearby wireless networks",icon="search",kind="wifi_scan"},{title="REFRESH CONNECTIONS",desc="Reload radio and service status",icon="refresh",kind="refresh"}}
 local function C(c,a) love.graphics.setColor(c[1],c[2],c[3],a or 1) end
 local function T(s,x,y,w,z,c,align,b) local f=(b and font.bold or font.regular)(z) or love.graphics.newFont(z); love.graphics.setFont(f); C(c or {.9,.94,.98}); love.graphics.printf(tostring(s or ""),x,y,w,align or "left") end
+local refresh
 local function open(kind)
  local routes={wifi="hub_wifi",hotspot="hub_hotspot",bt="hub_bluetooth",basestation="hub_basestation",tailscale="hub_tailscale",sync="hub_syncthing",ftp="hub_ftp",probe="hub_network_tools",wifi_scan="hub_wifi"}
  if kind=="refresh" then refresh(); return true end; local scene=routes[kind]; if scene then return sm.push(scene,{}) end; return false
 end
-local function refresh()
+refresh=function()
  st.status="UPDATING CONNECTIONS…"
  bridge.call("network_status",{},function(r) if r.ok and r.network then st.network=r.network; st.status="NETWORK STATE UPDATED" else st.status="NETWORK STATUS · "..tostring(r.error or r.reason or "unavailable") end end)
  bridge.call("tailscale_status",{},function(r) st.tailscale=r.ok and r or {error=r.error or "unavailable"} end)
