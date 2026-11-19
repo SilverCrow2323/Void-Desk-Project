@@ -1823,6 +1823,9 @@ def h_bt_action(args):
         "power_on": ["power", "on"],
         "power_off": ["power", "off"],
     }
+    if action == "remove" and args.get("confirm") is not True:
+        return {"ok": False, "confirm_required": True,
+                "reason": "removing a Bluetooth association requires confirmation"}
     if action in ("pair", "trust", "connect", "disconnect", "remove"):
         address = str(args.get("mac") or "")
         if not re.fullmatch(r"[0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5}", address):
