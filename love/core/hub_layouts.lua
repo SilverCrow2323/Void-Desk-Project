@@ -34,7 +34,7 @@ local function draw_item(item,index,x,y,w,h,selected,accent,kind,alpha,compact)
     text(item.label or "Untitled",tx,y+(h-20)/2,w-(tx-x)-48,title_h,
         {.92,.95,.98}, "left",true)
     if item.desc and not compact then
-        text(item.desc,tx,y+(h-20)/2+13,w-(tx-x)-16,7,{.52,.64,.73},"left")
+        text(item.desc,tx,y+(h-20)/2+13,w-(tx-x)-16,8,{.58,.69,.78},"left")
     end
     local value=item.value or (item.badge and ("["..item.badge.."]")) or "›"
     text(value,x+w-42,y+(h-9)/2,33,8,selected and accent or {.47,.62,.72},"right",true)
@@ -68,9 +68,9 @@ function M.media(_scene,items,selected,r,accent,alpha)
     if items[1] then
         shell(r.x,r.y,r.width,hero_h,selected==1,accent,"media",alpha)
         pcall(icon.draw,items[1].icon or "music",r.x+14,r.y+12,30,accent,{alpha=alpha})
-        text("FEATURED CHANNEL",r.x+56,r.y+8,r.width-70,7,{.58,.72,.82},"left",true)
+        text("FEATURED CHANNEL",r.x+56,r.y+8,r.width-70,8,{.62,.75,.85},"left",true)
         text(items[1].label,r.x+56,r.y+21,r.width-70,13,{.95,.94,1},"left",true)
-        text(items[1].desc or "",r.x+56,r.y+39,r.width-70,7,{.63,.72,.82})
+        text(items[1].desc or "",r.x+56,r.y+39,r.width-70,8,{.67,.76,.85})
         text(items[1].value or "OPEN",r.x+r.width-62,r.y+8,48,7,accent,"right",true)
     end
     local count=math.max(0,#items-1); local cols=2
@@ -104,9 +104,9 @@ function M.toolbox(_scene,items,selected,r,accent,alpha)
         shell(x,y,w,h,selected==i,accent,"toolbox",alpha)
         pcall(icon.draw,item.icon or "gear",x+w/2-12,y+7,24,
             selected==i and accent or {.62,.78,.68},{alpha=alpha})
-        text(item.label or "Tool",x+4,y+37,w-8,8,{.92,.95,.96},"center",true)
+        text(item.label or "Tool",x+4,y+37,w-8,9,{.92,.95,.96},"center",true)
         local sub=item.value or item.badge or "OPEN"
-        text(sub,x+4,y+h-15,w-8,6,selected==i and accent or {.48,.65,.57},"center")
+        text(sub,x+4,y+h-15,w-8,8,selected==i and accent or {.48,.65,.57},"center")
     end
     return true
 end
@@ -122,7 +122,7 @@ function M.settings(_scene,items,selected,r,accent,alpha)
             C(accent,.15*alpha); love.graphics.rectangle("fill",r.x+4,y,rail_w-8,row_h-1,3,3)
             C(accent,.8*alpha); love.graphics.rectangle("fill",r.x+4,y,2,row_h-1)
         end
-        text(item.label or "Setting",r.x+12,y+5,rail_w-22,7,
+        text(item.label or "Setting",r.x+12,y+5,rail_w-22,8,
             selected==i and accent or {.75,.82,.89},"left",selected==i)
     end
     local h=r.height
@@ -179,8 +179,8 @@ function M.diagnostics(_scene,items,selected,r,accent,alpha)
         shell(x,y,w,h,selected==i,accent,"workshop",alpha)
         pcall(icon.draw,item.icon or "info",x+10,y+10,20,
             selected==i and accent or {.65,.75,.85},{alpha=alpha})
-        text(item.label or "Check",x+38,y+9,w-48,8,{.93,.96,.99},"left",true)
-        text(item.desc or "",x+38,y+23,w-48,6,{.55,.69,.79})
+        text(item.label or "Check",x+38,y+9,w-48,9,{.93,.96,.99},"left",true)
+        text(item.desc or "",x+38,y+23,w-48,8,{.61,.73,.82})
         if item.value then text(item.value,x+10,y+h-15,w-20,7,accent,"right",true) end
     end
     return true
@@ -195,9 +195,9 @@ function M.info(_scene,items,selected,r,accent,alpha)
         shell(x,y,w,h,selected==i,accent,"info",alpha)
         text(string.format("%02d  /  ARCHIVE",i),x+17,y+7,w-24,6,
             selected==i and accent or {.48,.58,.68},"left",true)
-        text(item.label or "Entry",x+17,y+20,w-24,8,{.93,.95,.98},"left",true)
+        text(item.label or "Entry",x+17,y+20,w-24,9,{.93,.95,.98},"left",true)
         local desc=item.desc or item.value or "Open archive entry"
-        text(desc,x+17,y+34,w-27,6,{.56,.66,.75},"left")
+        text(desc,x+17,y+34,w-27,8,{.62,.71,.8},"left")
     end
     return true
 end
