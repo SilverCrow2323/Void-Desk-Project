@@ -92,7 +92,7 @@ function M.enter()
   if st.busy and a~="b" then return end
   if a=="up" then st.selected=math.max(1,st.selected-1)
   elseif a=="down" then st.selected=math.min(math.max(1,#st.devices),st.selected+1)
-  elseif a=="a" then action("pair")
+  elseif a=="a" then action(selected_device() and selected_device().paired and "connect" or "pair")
   elseif a=="x" then action("connect")
   elseif a=="l1" then action("trust")
   elseif a=="r1" then action("disconnect")
@@ -136,7 +136,7 @@ function M.draw()
     22,215,W-44,9,{.59,.72,.82},"center")
  end
  T(st.status,12,H-54,W-24,7,{.49,.82,.95},"center")
- T("START POWER   A PAIR   X CONNECT   L1 TRUST   R1 DISCONNECT",
+ T("START POWER   A PAIR/CONNECT   X CONNECT   L1 TRUST   R1 DISCONNECT",
    8,H-36,W-16,7,{.72,.87,.95},"center",true)
  T("SELECT UNPAIR   Y SCAN   B BACK",8,H-19,W-16,7,{.72,.87,.95},"center")
  if st.confirm_remove then
