@@ -131,3 +131,20 @@ def test_uplink_has_dedicated_cyan_dashboard_and_detail_scenes():
     for scene in ("hub_wifi", "hub_hotspot", "hub_bluetooth",
                   "hub_network_tools", "hub_basestation", "hub_ftp"):
         assert f'name = "{scene}"' in capture
+
+
+
+def test_uplink_service_detail_screens_have_distinct_animated_motifs():
+    tailscale = (LOVE / "scenes" / "hub_tailscale.lua").read_text(encoding="utf-8")
+    syncthing = (LOVE / "scenes" / "hub_syncthing.lua").read_text(encoding="utf-8")
+    assert 'uplink_bg.draw(W, H, t, "mesh"' in tailscale
+    assert 'uplink_bg.draw(W, H, t, "transfer"' in syncthing
+    assert 'require("effects.uplink_bg")' in tailscale
+    assert 'require("effects.uplink_bg")' in syncthing
+
+
+def test_uplink_maintenance_refresh_uses_the_live_refresh_callback():
+    source = (LOVE / "scenes" / "hub_uplink.lua").read_text(encoding="utf-8")
+    assert "local refresh\nlocal function open(kind)" in source
+    assert 'if kind=="refresh" then refresh(); return true end' in source
+    assert "refresh=function()" in source
