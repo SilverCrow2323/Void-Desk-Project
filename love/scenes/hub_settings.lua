@@ -1,4 +1,6 @@
 local dashboard = require("core.dashboard_screen")
+local layouts = require("core.hub_layouts")
+local atmosphere = require("effects.hub_atmosphere")
 local config    = require("core.config")
 local theme     = require("theme.loader")
 local sm        = require("core.scene_manager")
@@ -14,6 +16,12 @@ return dashboard.new({
     node_idx = 7,
     widget_height = 176,
     status = "Configuration",
+    background_draw = function(W,H,t,_nc,alpha)
+        atmosphere.draw(W,H,t,"settings",{0.39,0.51,0.82},alpha)
+    end,
+    menu_draw = function(scene,items,selected,rect)
+        return layouts.settings(scene,items,selected,rect,{0.39,0.51,0.82},1)
+    end,
 
     widgets_draw = function(scene, alpha)
         local W = love.graphics.getWidth()
