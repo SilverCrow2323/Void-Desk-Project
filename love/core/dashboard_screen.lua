@@ -28,6 +28,8 @@ function M.new(config)
     local widgets_draw = config.widgets_draw
     local on_enter = config.on_enter
     local on_update = config.on_update
+    local menu_draw = config.menu_draw
+    local on_navigate = config.on_navigate
     scene._data = {}
 
     local function get_live_items()
@@ -51,10 +53,19 @@ function M.new(config)
         input.clear()
         input.on("press", function(action)
             local live = get_live_items()
-            if action == "up" then
-                selected = math.max(1, selected - 1)
-            elseif action == "down" then
-                selected = math.min(#live, selected + 1)
+            if action == "up" or action == "down" or action == "left" or action == "right" then
+                local next_selection = nil
+                if on_navigate then
+                    local ok, result = pcall(on_navigate, action, selected, #live, scene)
+                    if ok then next_selection = result end
+                end
+                if type(next_selection) == "number" then
+                    selected = math.max(1, math.min(#live, math.floor(next_selection)))
+                elseif action == "up" then
+                    selected = math.max(1, selected - 1)
+                elseif action == "down" then
+                    selected = math.min(#live, selected + 1)
+                end
             elseif action == "a" then
                 local item = live[selected]
                 if item and item.action then
@@ -66,7 +77,7 @@ function M.new(config)
             elseif action == "select" then
                 jobs.toggle_overlay()
             end
-        end)
+        end))
     end
 
     function scene.save_state()
