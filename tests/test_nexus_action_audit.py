@@ -91,7 +91,7 @@ def test_session_hub_owns_the_session_launch_bridge():
         encoding="utf-8"
     )
     assert 'bridge.call("session_list"' in session
-    assert re.search(r'bridge\\.call\\(\\s*"session_launch"\\s*,\\s*\\{\\s*id\\s*=\\s*e\\.id\\s*\\}', session)
+    assert re.search(r'bridge\.call\(\s*"session_launch"\s*,\s*\{\s*id\s*=\s*e\.id\s*\}', session)
     assert '"session_launch": h_session_launch' in service
 
 
