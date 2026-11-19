@@ -140,6 +140,11 @@ function M.new(config)
         local visible_rows = math.max(1, math.floor((menu_bottom - menu_top) / L.row_h))
 
         local live = get_live_items()
+        if #live > 0 then
+            selected = math.max(1, math.min(#live, selected))
+        else
+            selected = 1
+        end
 
         -- Ensure selection is visible
         if selected < scroll_offset + 1 then
