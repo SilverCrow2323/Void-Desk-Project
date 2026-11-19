@@ -72,8 +72,12 @@ end
 local function draw_service(i,item,x,y,w,h)
  local selected=st.focus==i; panel(x,y,w,h,selected); icon.draw(item.icon,x+10,y+15,25,selected and CYAN or {.62,.76,.84}); T(item.title,x+45,y+7,w-55,9,{.94,.96,.98},"left",true); T(item.sub,x+45,y+21,w-55,7,{.52,.66,.75})
  local status
- if item.kind=="tailscale" then status=st.tailscale.error or (st.tailscale.installed and (st.tailscale.backend or (st.tailscale.daemon and "RUNNING" or "STOPPED")) or "NOT INSTALLED")
- elseif item.kind=="sync" then status=st.sync.message or st.sync.state or (st.sync.available and "READY" or "NOT CONFIGURED")
+ if item.kind=="tailscale" then
+  local err=st.tailscale.error
+  status=(err and err~="" and err) or (st.tailscale.installed and (st.tailscale.backend or (st.tailscale.daemon and "RUNNING" or "STOPPED")) or "NOT INSTALLED")
+ elseif item.kind=="sync" then
+  local message=st.sync.message
+  status=(message and message~="" and message) or st.sync.state or (st.sync.available and "READY" or "NOT CONFIGURED")
  elseif item.kind=="basestation" then status="PC ONLY · COMPANION" else status="CLIENT UI NOT MIGRATED" end
  T(status,x+45,y+36,w-55,7,{.31,.78,.94})
 end
