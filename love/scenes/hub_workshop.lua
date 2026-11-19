@@ -1,4 +1,6 @@
 local dashboard = require("core.dashboard_screen")
+local layouts = require("core.hub_layouts")
+local atmosphere = require("effects.hub_atmosphere")
 local bridge    = require("core.bridge")
 local sm        = require("core.scene_manager")
 local widgets   = require("core.widgets")
@@ -47,6 +49,15 @@ return dashboard.new({
     node_idx = 6,
     widget_height = 160,
     status = "System maintenance",
+    background_draw = function(W,H,t,_nc,alpha)
+        atmosphere.draw(W,H,t,"workshop",{0.69,0.43,0.94},alpha)
+    end,
+    menu_draw = function(scene,items,selected,rect)
+        return layouts.workshop(scene,items,selected,rect,{0.69,0.43,0.94},1)
+    end,
+    on_navigate = function(action,selected,count)
+        return layouts.navigate_grid(2,action,selected,count)
+    end,
 
     on_enter = function(self) refresh(self, false) end,
     on_update = function(self, dt)
