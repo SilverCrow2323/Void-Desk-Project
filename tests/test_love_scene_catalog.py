@@ -121,9 +121,9 @@ def test_uplink_has_dedicated_cyan_dashboard_and_detail_scenes():
                   "WI-FI SCANNER", "REFRESH CONNECTIONS"):
         assert label in source
     assert 'require("effects.uplink_bg")' in source
-    assert 'sm.push("hub_wifi"' in source
-    assert 'sm.push("hub_hotspot"' in source
-    assert 'sm.push("hub_bluetooth"' in source
+    for route in ('wifi="hub_wifi"', 'hotspot="hub_hotspot"',
+                  'bt="hub_bluetooth"'):
+        assert route in source
     for scene in ("hub_wifi", "hub_hotspot", "hub_bluetooth",
                   "hub_network_tools", "hub_basestation", "hub_ftp"):
         assert (LOVE / "scenes" / f"{scene}.lua").is_file()
