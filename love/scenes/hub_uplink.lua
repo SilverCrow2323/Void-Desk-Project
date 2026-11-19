@@ -1,128 +1,65 @@
-local dashboard = require("core.dashboard_screen")
-local bridge    = require("core.bridge")
-local sm        = require("core.scene_manager")
-local nodes     = require("core.nodes")
-local widgets   = require("core.widgets")
-
-local state = {
-    wifi    = { connected = false, ssid = "—", signal = 0, ip = "—" },
-    bt      = { on = false, count = 0 },
-    hotspot = { on = false, ssid = "—" },
-    info    = { hostname = "—", gateway = "—" },
-}
-
-local function refresh(scene, silent)
-    bridge.call("network_status", {}, function(resp)
-        if resp.ok and resp.network then
-            state.wifi    = resp.network.wifi    or state.wifi
-            state.bt      = resp.network.bt      or state.bt
-            state.hotspot = resp.network.hotspot or state.hotspot
-            state.info    = resp.network.info    or state.info
-            if not silent then scene.set_status("Ready") end
-        end
-    end)
+-- VOIDDESK // UPLINK — dedicated network-control layout
+local sm=require("core.scene_manager"); local input=require("core.input"); local bridge=require("core.bridge")
+local font=require("core.font"); local icon=require("core.icon"); local bg=require("effects.uplink_bg")
+local M={}; local CYAN={.22,.80,.98}; local DIM={.48,.62,.71}
+local st={network={wifi={},hotspot={},bt={},info={}},tailscale={},sync={},focus=1,t=0,status="READING NETWORK STATE",refresh_t=0}
+local quick={{title="WI-FI",icon="wifi",kind="wifi"},{title="HOTSPOT",icon="signal",kind="hotspot"},{title="BLUETOOTH",icon="bluetooth",kind="bt"}}
+local services={{title="B.S. SERVER",icon="globe",kind="basestation",sub="BaseStation PC companion"},{title="TAILSCALE",icon="uplink",kind="tailscale",sub="Private tailnet · peers · Taildrop"},{title="SYNCTHING",icon="refresh",kind="sync",sub="Folders · devices · sync state"},{title="FTP",icon="upload",kind="ftp",sub="FTPiercer transfer client"}}
+local maintenance={{title="NETWORK PROBE",desc="IP · gateway · DNS · internet reachability",icon="globe",kind="probe"},{title="WI-FI SCANNER",desc="Discover nearby wireless networks",icon="search",kind="wifi_scan"},{title="REFRESH CONNECTIONS",desc="Reload radio and service status",icon="refresh",kind="refresh"}}
+local function C(c,a) love.graphics.setColor(c[1],c[2],c[3],a or 1) end
+local function T(s,x,y,w,z,c,align,b) local f=(b and font.bold or font.regular)(z) or love.graphics.newFont(z); love.graphics.setFont(f); C(c or {.9,.94,.98}); love.graphics.printf(tostring(s or ""),x,y,w,align or "left") end
+local function open(kind)
+ local routes={wifi="hub_wifi",hotspot="hub_hotspot",bt="hub_bluetooth",basestation="hub_basestation",tailscale="hub_tailscale",sync="hub_syncthing",ftp="hub_ftp",probe="hub_network_tools",wifi_scan="hub_wifi"}
+ if kind=="refresh" then return true end; local scene=routes[kind]; if scene then return sm.push(scene,{}) end; return false
 end
-
-return dashboard.new({
-    title = "UPLINK",
-    node_idx = 5,
-    widget_height = 158,
-    row_height = 50,
-    status = "Network control",
-
-    on_enter = function(scene) refresh(scene, false) end,
-    on_update = function(scene, dt)
-        scene._t = (scene._t or 0) + dt
-        if scene._t > 5 then scene._t = 0; refresh(scene, true) end
-    end,
-
-    widgets_draw = function(scene, alpha)
-        local W = love.graphics.getWidth()
-        local nc = nodes.color_for(5)
-        local cy, ch = 62, 68
-        local cw = (W - 40) / 3
-        local gap = 8
-
-        local w_c = state.wifi.connected and {0.40,0.90,0.50} or {0.55,0.58,0.62}
-        widgets.status_card(12, cy, cw, ch, "wifi", "Wi-Fi",
-            state.wifi.ssid or "—", w_c,
-            state.wifi.connected and "ON" or "OFF", alpha)
-
-        local b_c = state.bt.on and {0.35,0.75,0.95} or {0.55,0.58,0.62}
-        widgets.status_card(12 + cw + gap, cy, cw, ch, "bluetooth",
-            "Bluetooth", string.format("%d paired", state.bt.count or 0),
-            b_c, state.bt.on and "ON" or "OFF", alpha)
-
-        local h_c = state.hotspot.on and {1.0,0.72,0.20} or {0.55,0.58,0.62}
-        widgets.status_card(12 + 2*(cw+gap), cy, cw, ch, "signal",
-            "Hotspot", state.hotspot.on and (state.hotspot.ssid or "active") or "off",
-            h_c, state.hotspot.on and "ON" or "OFF", alpha)
-
-        widgets.info_row(20, 138, W-40, "IP",
-                         state.wifi.ip or "—", {0.4,0.9,0.5}, alpha)
-        widgets.info_row(20, 156, W-40, "Hostname",
-                         state.info.hostname or "—", nc, alpha)
-    end,
-
-    items = {
-        { icon = "wifi", label = "Scan Wi-Fi",
-          value = state.wifi.connected and "ON" or "OFF",
-          desc = "Find and connect to available networks",
-          action = function(scene)
-              scene.set_status("Scanning Wi-Fi...")
-              bridge.call("wifi_scan", {}, function(resp)
-                  if resp.ok then
-                      scene.set_status(string.format("Found %d networks", #(resp.networks or {})))
-                  else
-                      scene.set_status("Wi-Fi: " .. (resp.error or resp.reason or "failed"))
-                  end
-              end)
-              return "Scanning..."
-          end },
-        { icon = "bluetooth", label = "Bluetooth",
-          value = state.bt.on and "ON" or "OFF",
-          desc = "Pair controllers, headphones, keyboards",
-          action = function(scene)
-              scene.set_status("Scanning Bluetooth...")
-              bridge.call("bt_scan", {}, function(resp)
-                  if resp.ok then
-                      scene.set_status(string.format("Found %d devices", #(resp.devices or {})))
-                  else
-                      scene.set_status("BT: " .. (resp.error or resp.reason or "failed"))
-                  end
-              end)
-              return "Scanning..."
-          end },
-        { icon = "signal", label = "Hotspot",
-          value = state.hotspot.on and "ON" or "OFF",
-          desc = "Share your connection as a Wi-Fi AP",
-          action = function(scene)
-              bridge.call("hotspot_toggle", {}, function(resp)
-                  scene.set_status("Hotspot: " .. (resp.state or resp.error or "toggling"))
-              end)
-              return "Toggling..."
-          end },
-        { icon = "uplink", label = "Tailscale", value = "NATIVE",
-          desc = "Service, QR login, peers, exit nodes and Taildrop",
-          action = function() sm.push("hub_tailscale", {}) end },
-        { icon = "refresh-cw", label = "Syncthing", value = "NATIVE",
-          desc = "Folders, devices, pause/resume, rescan and sync status",
-          action = function() sm.push("hub_syncthing", {}) end },
-        { icon = "globe", label = "Network Probe", desc = "Diagnostics: IP, gateway, latency",
-          action = function(scene)
-              bridge.call("system_info", {}, function(resp)
-                  if resp.ok then
-                      local i = resp.info or {}
-                      scene.set_status("IP: " .. (i.ip or "n/a") .. "  host: " .. (i.hostname or "?"))
-                  else
-                      scene.set_status("Probe: " .. (resp.error or "?"))
-                  end
-              end)
-              return "Probing..."
-          end },
-        { icon = "refresh", label = "Refresh", desc = "Re-query network state",
-          action = function(scene) refresh(scene, false); return "Refreshing..." end },
-        { icon = "back", label = "Back", desc = "Return to Nexus",
-          action = function() sm.back() end },
-    },
-})
+local function refresh()
+ st.status="UPDATING CONNECTIONS…"
+ bridge.call("network_status",{},function(r) if r.ok and r.network then st.network=r.network; st.status="NETWORK STATE UPDATED" else st.status="NETWORK STATUS · "..tostring(r.error or r.reason or "unavailable") end end)
+ bridge.call("tailscale_status",{},function(r) st.tailscale=r.ok and r or {error=r.error or "unavailable"} end)
+ bridge.call("syncthing_status",{},function(r) st.sync=r.ok and r or {message=r.error or "unavailable"} end)
+end
+local function toggle_quick(i)
+ if i==1 then local v=st.network.wifi or {}; if v.radio_on==nil then st.status="WI-FI RADIO CONTROL UNAVAILABLE"; return end; local a=v.radio_on and "radio_off" or "radio_on"; st.status="CHANGING WI-FI RADIO…"; bridge.call("wifi_action",{action=a},function(r) st.status=r.ok and ("WI-FI RADIO "..string.upper(r.state or "UPDATED")) or ("WI-FI · "..tostring(r.error or r.reason or "failed")); refresh() end)
+ elseif i==2 then st.status="CHANGING HOTSPOT…"; bridge.call("hotspot_toggle",{},function(r) st.status=r.ok and ("HOTSPOT "..string.upper(r.state or "UPDATED")) or ("HOTSPOT · "..tostring(r.error or r.reason or "failed")); refresh() end)
+ elseif i==3 then local v=st.network.bt or {}; if not v.available then st.status="BLUETOOTH ADAPTER UNAVAILABLE"; return end; local a=v.on and "power_off" or "power_on"; st.status="CHANGING BLUETOOTH POWER…"; bridge.call("bt_action",{action=a},function(r) st.status=r.ok and "BLUETOOTH POWER UPDATED" or ("BLUETOOTH · "..tostring(r.error or r.reason or "failed")); refresh() end) end
+end
+function M.enter()
+ st.focus=1; st.t=0; st.refresh_t=0; refresh(); input.clear()
+ input.on("press",function(a)
+  if a=="left" or a=="up" then st.focus=(st.focus-2)%10+1 elseif a=="right" or a=="down" then st.focus=st.focus%10+1
+  elseif a=="a" then if st.focus<=3 then open(quick[st.focus].kind) elseif st.focus<=7 then open(services[st.focus-3].kind) else open(maintenance[st.focus-7].kind) end
+  elseif a=="x" and st.focus<=3 then toggle_quick(st.focus) elseif a=="y" then refresh() elseif a=="b" then sm.back() end
+ end)
+end
+function M.leave() input.clear() end
+function M.update(dt) st.t=st.t+dt; st.refresh_t=st.refresh_t+dt; if st.refresh_t>9 then st.refresh_t=0; refresh() end end
+local function panel(x,y,w,h,selected) C({.018,.044,.066},.95); love.graphics.rectangle("fill",x,y,w,h,6,6); C(selected and CYAN or {.16,.31,.42},selected and .95 or .58); love.graphics.setLineWidth(selected and 2 or 1); love.graphics.rectangle("line",x,y,w,h,6,6) end
+local function draw_quick(i,item,x,y,w,h)
+ local n=st.network[item.kind] or {}; local selected=st.focus==i
+ local active=item.kind=="wifi" and n.radio_on==true or item.kind=="hotspot" and n.on==true or item.kind=="bt" and n.on==true
+ local known=item.kind=="wifi" and n.radio_on~=nil or item.kind=="hotspot" or item.kind=="bt" and n.available
+ local status=not known and "N/A" or active and "ON" or "OFF"
+ local label=item.kind=="wifi" and (n.connected and (n.ssid or "CONNECTED") or "NOT CONNECTED") or item.kind=="hotspot" and (n.on and (n.ssid or "ACTIVE") or "NOT BROADCASTING") or (n.name or "Bluetooth adapter")
+ panel(x,y,w,h,selected); icon.draw(item.icon,x+10,y+11,23,active and CYAN or DIM); T(item.title,x+42,y+9,w-98,9,{.91,.95,.98},"left",true); T(label,x+11,y+39,w-22,8,{.64,.76,.84})
+ local sx=x+w-45; C(active and {.11,.56,.72} or {.13,.17,.21}); love.graphics.rectangle("fill",sx,y+8,34,15,7,7); C(active and CYAN or {.4,.48,.55}); love.graphics.circle("fill",sx+(active and 25 or 9),y+15.5,5); T(status,sx-3,y+28,40,7,active and CYAN or {.60,.68,.74},"center",true)
+end
+local function draw_service(i,item,x,y,w,h)
+ local selected=st.focus==i; panel(x,y,w,h,selected); icon.draw(item.icon,x+10,y+15,25,selected and CYAN or {.62,.76,.84}); T(item.title,x+45,y+7,w-55,9,{.94,.96,.98},"left",true); T(item.sub,x+45,y+21,w-55,7,{.52,.66,.75})
+ local status
+ if item.kind=="tailscale" then status=st.tailscale.error or (st.tailscale.installed and (st.tailscale.backend or (st.tailscale.daemon and "RUNNING" or "STOPPED")) or "NOT INSTALLED")
+ elseif item.kind=="sync" then status=st.sync.message or st.sync.state or (st.sync.available and "READY" or "NOT CONFIGURED")
+ elseif item.kind=="basestation" then status="PC ONLY · COMPANION" else status="CLIENT UI NOT MIGRATED" end
+ T(status,x+45,y+36,w-55,7,{.31,.78,.94})
+end
+function M.draw()
+ local W,H=love.graphics.getDimensions(); bg.draw(W,H,st.t,"mesh",CYAN,1)
+ T("VOIDDESK  /  NETWORK CONTROL",14,8,W-28,8,{.36,.84,.98},"left",true); T("UPLINK",14,22,W-28,22,{.92,.97,1},"left",true); T("CONNECTIVITY  ·  SHARING  ·  REMOTE SERVICES",15,48,W-30,7,DIM)
+ local gap=8; local margin=12; local qw=(W-margin*2-gap*2)/3
+ for i,item in ipairs(quick) do draw_quick(i,item,margin+(i-1)*(qw+gap),63,qw,67) end
+ T("SERVICE LINKS",13,140,W-26,8,{.35,.78,.94},"left",true); local sw=(W-36)/2
+ for i,item in ipairs(services) do local col=(i-1)%2; local row=math.floor((i-1)/2); draw_service(i+3,item,12+col*(sw+12),155+row*59,sw,52) end
+ T("CONNECTION MAINTENANCE",13,278,W-26,8,{.35,.78,.94},"left",true)
+ for i,item in ipairs(maintenance) do local y=292+(i-1)*34; local sel=st.focus==i+7; if sel then C(CYAN,.13); love.graphics.rectangle("fill",12,y,W-24,29,4,4); C(CYAN,.9); love.graphics.rectangle("line",12,y,W-24,29,4,4) end; icon.draw(item.icon,20,y+5,18,sel and CYAN or DIM); T(item.title,48,y+3,170,8,{.88,.93,.97},"left",true); T(item.desc,212,y+5,W-230,7,{.56,.68,.77}) end
+ C({.012,.035,.052},.92); love.graphics.rectangle("fill",0,H-29,W,29); T(st.status,12,H-25,W-24,7,{.50,.82,.94},"center"); T("A OPEN   X POWER   Y REFRESH   ◀ ▶ NAVIGATE   B BACK",12,H-12,W-24,7,{.68,.82,.9},"center",true); love.graphics.setColor(1,1,1,1)
+end
+return M
