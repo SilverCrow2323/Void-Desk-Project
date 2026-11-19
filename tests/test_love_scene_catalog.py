@@ -112,3 +112,22 @@ def test_forge_uses_red_circular_module_carousel_and_curated_installer():
         assert f'{{"{package}"' in installer
     assert 'bridge.call("job_start"' in installer
     assert 'bridge.call("apt_catalog"' in installer
+
+
+def test_uplink_has_dedicated_cyan_dashboard_and_detail_scenes():
+    source = (LOVE / "scenes" / "hub_uplink.lua").read_text(encoding="utf-8")
+    for label in ("WI-FI", "HOTSPOT", "BLUETOOTH", "B.S. SERVER",
+                  "TAILSCALE", "SYNCTHING", "FTP", "NETWORK PROBE",
+                  "WI-FI SCANNER", "REFRESH CONNECTIONS"):
+        assert label in source
+    assert 'require("effects.uplink_bg")' in source
+    assert 'sm.push("hub_wifi"' in source
+    assert 'sm.push("hub_hotspot"' in source
+    assert 'sm.push("hub_bluetooth"' in source
+    for scene in ("hub_wifi", "hub_hotspot", "hub_bluetooth",
+                  "hub_network_tools", "hub_basestation", "hub_ftp"):
+        assert (LOVE / "scenes" / f"{scene}.lua").is_file()
+    capture = (LOVE / "core" / "visual_capture.lua").read_text(encoding="utf-8")
+    for scene in ("hub_wifi", "hub_hotspot", "hub_bluetooth",
+                  "hub_network_tools", "hub_basestation", "hub_ftp"):
+        assert f'name = "{scene}"' in capture
