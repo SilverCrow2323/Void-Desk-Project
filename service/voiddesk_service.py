@@ -631,22 +631,79 @@ def _gateway_ip():
         pass
     return ""
 
+def _wifi_radio_state(connected):
+    """Return True/False when rfkill can report Wi-Fi radio state, else None."""
+    if shutil.which("rfkill"):
+        try:
+            result = subprocess.run(
+                ["rfkill", "list", "wifi"], capture_output=True,
+                text=True, timeout=3, check=False,
+            )
+            output = (result.stdout or "").lower()
+            if result.returncode == 0 and output:
+                blocked = ("soft blocked: yes" in output or
+                           "hard blocked: yes" in output)
+                return not blocked
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    return True if connected else None
+
+
+def _bluetooth_snapshot(fallback_powered=None):
+    available = bool(shutil.which("bluetoothctl"))
+    name = "—"
+    powered = fallback_powered
+    paired_count = 0
+    if not available:
+        return {"available": False, "name": name,
+                "on": bool(powered), "count": paired_count}
+    try:
+        result = subprocess.run(
+            ["bluetoothctl", "show"], capture_output=True,
+            text=True, timeout=3, check=False,
+        )
+        for line in (result.stdout or "").splitlines():
+            line = line.strip()
+            if line.startswith("Alias:"):
+                name = line.split(":", 1)[1].strip() or name
+            elif line.startswith("Name:") and name == "—":
+                name = line.split(":", 1)[1].strip() or name
+            elif line.startswith("Powered:"):
+                powered = line.split(":", 1)[1].strip().lower() == "yes"
+        paired = subprocess.run(
+            ["bluetoothctl", "paired-devices"], capture_output=True,
+            text=True, timeout=3, check=False,
+        )
+        paired_count = sum(
+            1 for line in (paired.stdout or "").splitlines()
+            if re.match(r"^Device\\s+[0-9A-Fa-f:]{17}\\s+.+$", line.strip())
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return {"available": available, "name": name,
+            "on": bool(powered), "count": paired_count}
+
+
 def h_network_status(args):
     try:
         if IS_VISUAL_CAPTURE:
             return {"ok": True, "network": {
-                "wifi": {"connected": False, "ssid": "OFFLINE",
-                         "signal": 0, "ip": "—"},
-                "bt": {"on": False, "count": 0},
+                "wifi": {"available": True, "radio_on": True,
+                         "connected": True, "ssid": "VOIDDESK-LAB",
+                         "signal": 95, "ip": "192.168.1.42"},
+                "bt": {"available": True, "on": True, "name": "VOIDDESK-H700",
+                       "count": 2},
                 "hotspot": {"on": False, "ssid": "—"},
-                "info": {"hostname": "VISUAL-CAPTURE", "gateway": "—"},
+                "info": {"hostname": "VOIDDESK-H700", "gateway": "192.168.1.1"},
             }}
         if deskinfo is not None:
             connected, ssid, lvl, _iface, ip = deskinfo.wifi_status()
             bt_on = deskinfo.bt_status()
+            wireless_available = bool(deskinfo.wireless_ifaces())
         else:
             connected, ssid, lvl, ip, bt_on = False, None, None, None, None
-        signal_pct = {0: 20, 1: 45, 2: 70, 3: 95}.get(lvl, 0) \
+            wireless_available = False
+        signal_pct = {0: 20, 1: 45, 2: 70, 3: 95}.get(lvl, 0) \\
             if lvl is not None else 0
         hs_marker = DATA / ".hotspot_active"
         hotspot_on = hs_marker.exists()
@@ -654,12 +711,15 @@ def h_network_status(args):
         if hotspot_on:
             try:
                 hotspot_ssid = hs_marker.read_text().strip()
-            except Exception:
+            except OSError:
                 pass
+        bt = _bluetooth_snapshot(bt_on)
         return {"ok": True, "network": {
-            "wifi": {"connected": bool(connected), "ssid": ssid or "—",
+            "wifi": {"available": wireless_available,
+                     "radio_on": _wifi_radio_state(bool(connected)),
+                     "connected": bool(connected), "ssid": ssid or "—",
                      "signal": signal_pct, "ip": ip or "—"},
-            "bt": {"on": bool(bt_on), "count": 0},
+            "bt": bt,
             "hotspot": {"on": hotspot_on, "ssid": hotspot_ssid or "—"},
             "info": {"hostname": platform.node(),
                      "gateway": _gateway_ip() or "—"},
@@ -1570,6 +1630,116 @@ def h_wifi_scan(args):
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
+def h_wifi_action(args):
+    """Control the Wi-Fi radio only through the platform rfkill interface."""
+    blocked = device_only("wifi_action")
+    if blocked:
+        return blocked
+    action = str(args.get("action") or "")
+    if action not in ("radio_on", "radio_off"):
+        return {"ok": False, "error": "unsupported Wi-Fi action"}
+    if action == "radio_off" and (DATA / ".hotspot_active").exists():
+        return {"ok": False,
+                "error": "stop the hotspot before disabling the Wi-Fi radio"}
+    if not shutil.which("rfkill"):
+        return {"ok": False, "error": "rfkill is not available on this system"}
+    command = ["rfkill", "unblock" if action == "radio_on" else "block", "wifi"]
+    try:
+        result = subprocess.run(command, capture_output=True, text=True,
+                                timeout=5, check=False)
+        if result.returncode:
+            detail = (result.stderr or result.stdout or "rfkill failed")[-240:]
+            return {"ok": False, "error": detail}
+        return {"ok": True, "state": "on" if action == "radio_on" else "off"}
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"ok": False, "error": "Wi-Fi radio action failed: " + str(exc)[:160]}
+
+
+def h_bt_action(args):
+    """Allowlisted Bluetooth power and paired-device actions."""
+    blocked = device_only("bt_action")
+    if blocked:
+        return blocked
+    action = str(args.get("action") or "")
+    commands = {
+        "power_on": ["power", "on"],
+        "power_off": ["power", "off"],
+    }
+    if action in ("pair", "trust", "connect", "disconnect"):
+        address = str(args.get("mac") or "")
+        if not re.fullmatch(r"[0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5}", address):
+            return {"ok": False, "error": "a valid Bluetooth device address is required"}
+        commands[action] = [action, address]
+    command = commands.get(action)
+    if command is None:
+        return {"ok": False, "error": "unsupported Bluetooth action"}
+    if not shutil.which("bluetoothctl"):
+        return {"ok": False, "error": "bluetoothctl is not available"}
+    try:
+        result = subprocess.run(
+            ["bluetoothctl"] + command, capture_output=True,
+            text=True, timeout=15 if action in ("pair", "connect") else 5,
+            check=False,
+        )
+        output = (result.stdout or result.stderr or "").strip()[-240:]
+        if result.returncode:
+            return {"ok": False, "error": output or "Bluetooth action failed"}
+        return {"ok": True, "action": action, "output": output or "Done"}
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"ok": False, "error": "Bluetooth action failed: " + str(exc)[:160]}
+
+
+def h_network_probe(args):
+    """Run bounded, fixed-target route, ICMP and DNS diagnostics."""
+    if IS_VISUAL_CAPTURE:
+        return {"ok": True, "probe": {
+            "gateway": "192.168.1.1", "interface": "wlan0",
+            "internet": True, "dns": True, "latency_ms": 8.4,
+        }}
+    gateway = _gateway_ip() or "—"
+    interface = "—"
+    if shutil.which("ip"):
+        try:
+            route = subprocess.run(
+                ["ip", "-4", "route", "show", "default"],
+                capture_output=True, text=True, timeout=3, check=False,
+            )
+            parts = (route.stdout or "").split()
+            if "dev" in parts:
+                interface = parts[parts.index("dev") + 1]
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    internet = None
+    latency = None
+    if shutil.which("ping"):
+        try:
+            ping = subprocess.run(
+                ["ping", "-c", "1", "-W", "2", "1.1.1.1"],
+                capture_output=True, text=True, timeout=3, check=False,
+            )
+            output = (ping.stdout or "") + (ping.stderr or "")
+            internet = ping.returncode == 0
+            match = re.search(r"time[=<]([0-9.]+)\\s*ms", output)
+            if match:
+                latency = round(float(match.group(1)), 1)
+        except (OSError, subprocess.TimeoutExpired):
+            internet = False
+    dns = None
+    if shutil.which("getent"):
+        try:
+            lookup = subprocess.run(
+                ["getent", "ahostsv4", "example.com"],
+                capture_output=True, text=True, timeout=3, check=False,
+            )
+            dns = lookup.returncode == 0 and bool((lookup.stdout or "").strip())
+        except (OSError, subprocess.TimeoutExpired):
+            dns = False
+    return {"ok": True, "probe": {
+        "gateway": gateway, "interface": interface,
+        "internet": internet, "dns": dns, "latency_ms": latency,
+    }}
+
+
 def h_bt_scan(args):
     if not IS_DEVICE:
         return {"ok": True, "devices": []}
@@ -2115,6 +2285,9 @@ HANDLERS = {
     "system_info": h_system_info,
     "gh_fetch_releases": h_gh_fetch_releases,
     "network_status": h_network_status,
+    "network_probe": h_network_probe,
+    "wifi_action": h_wifi_action,
+    "bt_action": h_bt_action,
     "system_status": h_system_status,
     "shell_start": h_shell_start,
     "shell_poll": h_shell_poll,
