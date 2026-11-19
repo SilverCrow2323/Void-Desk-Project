@@ -50,12 +50,12 @@ function M.draw(W, H, t, nc, alpha)
 
     love.graphics.clear(0.020 * alpha, 0.012 * alpha, 0.008 * alpha, 1)
     for r = 260, 40, -40 do
-        love.graphics.setColor(1, 0.28, 0.05, 0.02 * alpha)
+        love.graphics.setColor(0.95, 0.055, 0.035, 0.025 * alpha)
         love.graphics.circle("fill", W / 2, H + 40, r)
     end
     for i = 1, 3 do
         local y = H * 0.6 + math.sin(t * 0.8 + i) * 30
-        love.graphics.setColor(1, 0.5, 0.15, 0.012 * alpha)
+        love.graphics.setColor(0.95, 0.12, 0.075, 0.015 * alpha)
         love.graphics.rectangle("fill", 0, y, W, 40)
     end
 
@@ -89,7 +89,7 @@ function M.draw(W, H, t, nc, alpha)
             table.remove(M.arcs, i)
         else
             local k = 1 - a.age / a.life
-            love.graphics.setColor(0.9, 0.95, 1, k * 0.7 * alpha)
+            love.graphics.setColor(1, 0.22, 0.16, k * 0.72 * alpha)
             love.graphics.setLineWidth(1.5)
             local flat = {}
             for _, p in ipairs(a.pts) do
