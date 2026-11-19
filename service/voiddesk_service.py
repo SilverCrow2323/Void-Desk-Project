@@ -650,19 +650,28 @@ def _wifi_radio_state(connected):
 
 
 def _bluetooth_snapshot(fallback_powered=None):
+    """Read adapter alias, power and paired count without inventing an adapter."""
     available = bool(shutil.which("bluetoothctl"))
     name = "—"
     powered = fallback_powered
     paired_count = 0
     if not available:
         return {"available": False, "name": name,
-                "on": bool(powered), "count": paired_count}
+                "on": False, "count": 0}
     try:
         result = subprocess.run(
             ["bluetoothctl", "show"], capture_output=True,
             text=True, timeout=3, check=False,
         )
-        for line in (result.stdout or "").splitlines():
+        output = result.stdout or ""
+        controller_present = any(
+            line.strip().lower().startswith("controller ")
+            for line in output.splitlines()
+        )
+        if result.returncode != 0 or not controller_present:
+            return {"available": False, "name": name,
+                    "on": False, "count": 0}
+        for line in output.splitlines():
             line = line.strip()
             if line.startswith("Alias:"):
                 name = line.split(":", 1)[1].strip() or name
