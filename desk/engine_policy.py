@@ -15,6 +15,8 @@ def resolve_engine_config(config: Any) -> str:
     if not isinstance(config, dict):
         return DEFAULT_ENGINE
     engine = config.get("engine", DEFAULT_ENGINE)
+    if engine == "pygame":
+        return "py"
     return engine if isinstance(engine, str) and engine in VALID_ENGINES else DEFAULT_ENGINE
 
 
