@@ -82,3 +82,25 @@ LÖVE is release-ready only when all of the following are true:
 - Automated route/action tests and all 25 scene captures pass.
 - The complete controller-driven journeys pass on real RG35XX-H hardware.
 - The package keeps Pygame as the reference frontend and treats LÖVE as selectable only after parity for the declared release scope is demonstrated.
+
+
+## Desktop keyboard contract
+
+The desktop LÖVE frontend uses the same logical keyboard actions as the Pygame
+reference bridge:
+
+| Keyboard | Action |
+|---|---|
+| Arrow keys | D-pad |
+| Enter / A | A / confirm |
+| Escape / B | B / back |
+| X / Y | X / Y |
+| 1 / 2 / 3 / 4 | L1 / L2 / R2 / R1 |
+| Q / E | L3 / R3 |
+| F8 / F9 / M | Select / Start / Menu |
+
+Escape is deliberately **B/back**, not Menu; M remains the Menu key. The
+contract is locked by `tests/test_love_input_map.lua` and runs in the native
+LÖVE integration CI. This is a desktop keyboard contract, not proof of
+handheld controller behavior; the RG35XX-H input journey still requires
+physical validation.

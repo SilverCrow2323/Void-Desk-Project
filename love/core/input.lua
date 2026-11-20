@@ -49,16 +49,18 @@ function input.press(action, source)
 end
 
 input.KEYMAP = {
+    -- Keep the desktop keyboard contract identical to the Pygame reference bridge:
+    -- arrows = D-pad; Enter/A = A; Escape/B = B; 1..4/Q/E = shoulder/stick actions.
     ["up"] = "up", ["down"] = "down",
     ["left"] = "left", ["right"] = "right",
-    ["z"] = "a", ["return"] = "a",
-    ["x"] = "b", ["backspace"] = "b",
-    ["a"] = "y", ["s"] = "x",
-    ["q"] = "l1", ["w"] = "r1",
-    ["e"] = "l2", ["r"] = "r2",
-    ["tab"] = "select",
-    [" "] = "start",
-    ["escape"] = "menu", ["m"] = "menu",
+    ["return"] = "a", ["a"] = "a",
+    ["escape"] = "b", ["b"] = "b",
+    ["x"] = "x", ["y"] = "y",
+    ["1"] = "l1", ["2"] = "l2",
+    ["3"] = "r2", ["4"] = "r1",
+    ["q"] = "l3", ["e"] = "r3",
+    ["f8"] = "select", ["f9"] = "start",
+    ["m"] = "menu",
 }
 
 input.GAMEPAD_NAMES = {
