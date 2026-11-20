@@ -72,7 +72,7 @@ class SettingsHub(HubMixin):
         """Frontend engine toggle (py | love). Writes to desk_config.json."""
         app = self.app
         if key == "A":
-            cur = app.cfg.get("engine", "love")
+            cur = app.cfg.get("engine", "py")
             nxt = "py" if cur == "love" else "love"
             app.cfg["engine"] = nxt
             try:

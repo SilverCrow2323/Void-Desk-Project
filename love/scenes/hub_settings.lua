@@ -19,7 +19,7 @@ return dashboard.new({
         local W = love.graphics.getWidth()
         local nc = nodes.color_for(7)
 
-        local engine = get("engine", "love")
+        local engine = get("engine", "py")
         local theme_n = get("theme", "cyberpunk")
         local lang = get("lang", "en")
         local show_ba = get("show_bootanim", true) and "ON" or "OFF"
@@ -52,7 +52,7 @@ return dashboard.new({
         { badge = "E", label = "Frontend engine",
           desc = "Toggle PY (Pygame, stable) <-> LOVE (this UI)",
           action = function(scene)
-              local cur = get("engine", "love")
+              local cur = get("engine", "py")
               local nxt = (cur == "py") and "love" or "py"
               set("engine", nxt)
               scene.set_status("Engine: " .. nxt:upper() .. " — restart to apply")

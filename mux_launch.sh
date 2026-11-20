@@ -45,14 +45,19 @@ json.dump(d, open(p, 'w'), indent=1)
 # VoidDesk was running (or a session hand-off round-trip) picks up the
 # latest choice instead of the one from process start.
 run_engine() {
-    ENGINE="$(python3 -c "
-import json
-try:
-    print(json.load(open('$DATA/desk_config.json')).get('engine','love'))
-except Exception:
-    print('love')
-" 2>/dev/null)"
-    [ -z "$ENGINE" ] && ENGINE="love"
+    if ENGINE="$(python3 "$APP_DIR/bin/resolve_engine.py" "$DATA/desk_config.json" 2>>"$LOG")"; then
+        :
+    else
+        echo "$(date) engine preference could not be resolved; defaulting to Pygame" >>"$LOG"
+        ENGINE="py"
+    fi
+    case "$ENGINE" in
+        py|love) ;;
+        *)
+            echo "$(date) unsupported engine '$ENGINE'; defaulting to Pygame" >>"$LOG"
+            ENGINE="py"
+            ;;
+    esac
     echo "$(date) engine: $ENGINE" >>"$LOG"
 
     # Build one engine-neutral profile snapshot for both Pygame and LÖVE.
