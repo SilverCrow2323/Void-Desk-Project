@@ -44,7 +44,7 @@ A rejected/missing/incompatible selected profile falls back to the platform defa
 
 ### Frontend selection default
 
-The handheld launcher uses one shared engine resolver. A valid explicit `love` preference is preserved; a missing, malformed or unsupported preference defaults to `py` (Pygame), matching the shipped handheld configuration and the QWASAR manifest. The launcher still bootstraps the Pygame runtime on demand and can fall back to LÖVE when that bootstrap or the Pygame process fails. That fallback is logged and persisted as a recovery choice; it is not presented as Pygame having launched successfully.
+The handheld launcher uses one shared engine resolver. The PC launcher, Pygame settings and LÖVE settings use the same Pygame-first preference. A valid explicit `love` preference is preserved; the manifest identifier `pygame` is normalized to the runtime identifier `py`; a missing, malformed or unsupported preference defaults to `py`. The launcher still bootstraps the Pygame runtime on demand and can fall back to LÖVE when that bootstrap or the Pygame process fails. That fallback is logged and persisted as a recovery choice; it is not presented as Pygame having launched successfully.
 
 ## 3. Build flavours and side-by-side installation
 
