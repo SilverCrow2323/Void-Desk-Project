@@ -60,3 +60,4 @@ def test_pygame_identifier_and_frontend_defaults_are_consistent() -> None:
     assert 'cfg.get("engine", "py")' in (ROOT / "desk" / "hubs" / "settings.py").read_text(encoding="utf-8")
     assert 'engine = "py"' in (ROOT / "love" / "core" / "config.lua").read_text(encoding="utf-8")
     assert 'get("engine", "py")' in (ROOT / "love" / "scenes" / "hub_settings.lua").read_text(encoding="utf-8")
+    assert "manifest identifier `pygame` is normalized" in (ROOT / "docs" / "QWASAR_BOOT_AND_SESSION_MODEL.md").read_text(encoding="utf-8")
