@@ -56,7 +56,7 @@ BANNER = rf"""{Color.CYAN}{Color.BOLD}
  ╚══════════════════════════════════════════════════════════════════╝{Color.RESET}"""
 
 DEFAULT_CONFIG = {
-    "engine": "love",
+    "engine": "py",
     "pc_mode": "auto",
     "debug": False,
     "video_driver": "x11"
@@ -367,7 +367,7 @@ def action_launch(engine):
 
 def action_toggle_engine():
     cfg = read_cfg()
-    cur = cfg.get("engine", "love")
+    cur = cfg.get("engine", "py")
     nxt = "py" if cur == "love" else "love"
     cfg["engine"] = nxt
     write_cfg(cfg)
@@ -380,7 +380,7 @@ def action_edit_config_tui():
     while True:
         os.system("clear" if os.name == "posix" else "cls")
         print(f"{Color.CYAN}═══ QWASAR CONFIG EDITOR ═══{Color.RESET}\n")
-        print(f"  1) Default Engine : {Color.GREEN}{cfg.get('engine', 'love').upper()}{Color.RESET}")
+        print(f"  1) Default Engine : {Color.GREEN}{cfg.get('engine', 'py').upper()}{Color.RESET}")
         print(f"  2) PC Mode        : {Color.YELLOW}{cfg.get('pc_mode', 'auto')}{Color.RESET}")
         print(f"  3) Debug Mode     : {'ON' if cfg.get('debug') else 'OFF'}")
         print(f"  4) Video Driver   : {cfg.get('video_driver', 'x11')}")
@@ -484,7 +484,7 @@ def action_repair():
 
 # ==================================================================== MENU ==
 MENU = [
-    ("Launch QWASAR Desk (Default Config)", lambda: action_launch(read_cfg().get("engine", "love"))),
+    ("Launch QWASAR Desk (Default Config)", lambda: action_launch(read_cfg().get("engine", "py"))),
     ("Launch QWASAR Desk → LÖVE Engine",    lambda: action_launch("love")),
     ("Launch QWASAR Desk → Pygame Engine",  lambda: action_launch("py")),
     ("Quick Switch Default Engine",       action_toggle_engine),
@@ -501,7 +501,7 @@ def tui_main():
         cfg = read_cfg()
         eng_color = Color.GREEN if cfg.get("engine") == "love" else Color.CYAN
         
-        print(f"  {Color.BOLD}CURRENT ENGINE:{Color.RESET} {eng_color}{cfg.get('engine', 'love').upper()}{Color.RESET}"
+        print(f"  {Color.BOLD}CURRENT ENGINE:{Color.RESET} {eng_color}{cfg.get('engine', 'py').upper()}{Color.RESET}"
               f"  │  {Color.BOLD}PC MODE:{Color.RESET} {cfg.get('pc_mode', 'auto')}"
               f"  │  {Color.BOLD}ARCH:{Color.RESET} {platform.machine()}\n")
 
