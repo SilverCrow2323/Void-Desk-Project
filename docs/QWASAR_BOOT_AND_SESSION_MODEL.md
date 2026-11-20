@@ -42,6 +42,10 @@ The launcher runs the shared QWASAR Profile Resolver before the frontend starts.
 
 A rejected/missing/incompatible selected profile falls back to the platform default. If the preflight itself cannot produce a valid snapshot, the launchers log the issue and preserve the frontends' built-in legacy defaults. The Pygame settings screen can select a profile and requires a restart to apply it; LÖVE currently applies top-level workspace order/visibility/enabled state to its NEXUS nodes. This is a first profile pipeline, not the complete launch selector described above. See [QWASAR Profile Resolver](QWASAR_PROFILE_RESOLVER.md).
 
+### Frontend selection default
+
+The handheld launcher uses one shared engine resolver. A valid explicit `love` preference is preserved; a missing, malformed or unsupported preference defaults to `py` (Pygame), matching the shipped handheld configuration and the QWASAR manifest. The launcher still bootstraps the Pygame runtime on demand and can fall back to LÖVE when that bootstrap or the Pygame process fails. That fallback is logged and persisted as a recovery choice; it is not presented as Pygame having launched successfully.
+
 ## 3. Build flavours and side-by-side installation
 
 The package builder will produce separately identifiable flavours:
