@@ -52,3 +52,11 @@ def test_handheld_launcher_uses_the_shared_resolver() -> None:
     assert 'bin/resolve_engine.py' in launcher
     assert "get('engine','love')" not in launcher
     assert "print('love')" not in launcher
+
+
+def test_pygame_identifier_and_frontend_defaults_are_consistent() -> None:
+    assert resolve_engine_config({"engine": "pygame"}) == "py"
+    assert '"engine": "py"' in (ROOT / "voiddesk.py").read_text(encoding="utf-8")
+    assert 'cfg.get("engine", "py")' in (ROOT / "desk" / "hubs" / "settings.py").read_text(encoding="utf-8")
+    assert 'engine = "py"' in (ROOT / "love" / "core" / "config.lua").read_text(encoding="utf-8")
+    assert 'get("engine", "py")' in (ROOT / "love" / "scenes" / "hub_settings.lua").read_text(encoding="utf-8")
