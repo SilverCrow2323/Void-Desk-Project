@@ -26,3 +26,7 @@
 - [Documentation style](Documentation-Style-Guide)
 - <a href="https://github.com/SilverCrow2323/Void-Desk-Project">Source repository</a>
 - <a href="https://github.com/SilverCrow2323/Void-Desk-Project/tree/main/docs">Technical docs</a>
+
+**PROJECT PORTAL**
+- <a href="https://silvercrow2323.github.io/Void-Desk-Project/">QWASAR Field Portal ↗</a>
+- <a href="https://github.com/SilverCrow2323/Void-Desk-Project/releases">Releases</a>
