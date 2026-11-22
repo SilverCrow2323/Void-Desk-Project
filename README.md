@@ -33,6 +33,7 @@ Void Desk is a controller-first handheld environment in the wider **QWASAR-Env**
 | Install the latest published package | [Installation guide](wiki-source/Installation-muOS-Andromeda.md) · [Releases](https://github.com/SilverCrow2323/Void-Desk-Project/releases) |
 | Explore the v12 direction | [v12 blueprint](docs/V12_BLUEPRINT.md) |
 | Check firmware and controller compatibility | [muOS compatibility matrix](docs/MUOS_FIRMWARE_COMPATIBILITY.md) |
+| Track the 10.5.4 release gates | [Release readiness](docs/RELEASE_READINESS_10.5.4.md) |
 | Understand runtime and source layout | [Architecture](docs/ARCHITECTURE.md) |
 | Develop or contribute | [Development guide](docs/DEVELOPMENT.md) · [Contributing](CONTRIBUTING.md) |
 | Browse technical source docs | [Documentation index](docs/README.md) · [Wiki source archive](wiki-source/README.md) |
