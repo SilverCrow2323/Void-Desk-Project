@@ -30,7 +30,7 @@ A field manual for the handheld product, its host integration, the QWASAR contra
 | Device compatibility | [muOS matrix](MUOS_FIRMWARE_COMPATIBILITY.md) | [Profile resolver](QWASAR_PROFILE_RESOLVER.md) |
 | Developer | [Development guide](DEVELOPMENT.md) | [Architecture](ARCHITECTURE.md) |
 | Designer / writer | [Documentation style](DOCUMENTATION_STYLE_GUIDE.md) | [Visual identity](VISUAL_IDENTITY.md) |
-| QA / release | [Visual capture workflow](visual/README.md) | [Release testing](../wiki-source/Release-testing.md) |
+| QA / release | [10.5.4 release readiness gate](RELEASE_READINESS_10.5.4.md) | [Visual capture workflow](visual/README.md) · [Release testing](../wiki-source/Release-testing.md) |
 
 ## 🗺️ The system at a glance
 
