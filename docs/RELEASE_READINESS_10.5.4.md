@@ -6,7 +6,7 @@
 
 ## Release policy
 
-- Keep `main` protected from speculative integration. Consolidate on `release/consolidation-2026-11` and merge through reviewed pull requests.
+- Keep `main` protected from speculative integration. Consolidate on `release/consolidation-2026-11b` and merge through reviewed pull requests.
 - Preserve the current Pygame reference frontend. LÖVE remains experimental until its declared release scope passes the same user-journey and hardware gates.
 - A green source CI is necessary but does not certify muOS/H700 hardware.
 - Do not publish a release tag or binary until the packaging, installation, rollback and physical-device gates below are evidenced.
@@ -16,7 +16,7 @@
 
 | Area | Evidence | Release interpretation |
 |---|---|---|
-| Main CI | CI run 955 on `dd179668` completed successfully on 22 Nov | Mainline source checks are green |
+| Main CI | CI run 955 on `dd179668` completed successfully on 22 Nov, immediately before the documentation-only PR #84 merge | Mainline source checks were green at the audited baseline; the merge itself was validated by the three-job PR rerun |
 | Documentation/UI maintenance | PR #84 merged as `a4561ce`; rerun CI 44388775150 completed with all 3 jobs successful | Portal links and BaseStation backdrop dismissal are now on `main`; no Pages deployment is implied |
 | Launcher | PR #94 merged; Pygame is the validated default engine | Keep Pygame as the reference path |
 | SSH host-key policy | PR #95 merged; main CI run 955 passed | Known-host verification is present on the audited SSH surfaces |
