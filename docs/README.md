@@ -4,6 +4,8 @@
 
 A field manual for the handheld product, its host integration, the QWASAR contracts and the v12 direction.
 
+**Release engineering:** [10.5.4 consolidation and release readiness](RELEASE_READINESS_10.5.4.md) — current integration stack, known blockers and go/no-go gates.
+
 > **Visual documentation portal:** browse the [QWASAR Field Portal](../site/index.html) for the designed, responsive guide experience, then open the [interactive Asset Atlas](../site/asset-atlas.html) to inspect the NEXUS icons and real THE FORGE screen capture, or explore the [QWASAR Studio local concept](../site/studio.html) for layout composition and data-only profile export. Press **Ctrl+K / ⌘K** from any page to open quick navigation. The Markdown files here remain the technical source of truth. The GitHub Wiki is optional; the portal does not depend on it.
 
 > [!IMPORTANT]
