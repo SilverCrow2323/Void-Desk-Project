@@ -955,6 +955,7 @@ function showDetails(entry){
 }
 $("detailsClose").onclick = function(){ $("detailsOverlay").hidden = true; };
 $("detailsOk").onclick = function(){ $("detailsOverlay").hidden = true; };
+$("detailsOverlay").addEventListener("click", function(e){ if (e.target === this) $("detailsOverlay").hidden = true; });
 
 function deleteSingle(name){
   var body = new URLSearchParams({area: state.area, path: joinPath(name)});
