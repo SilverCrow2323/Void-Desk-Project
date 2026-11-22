@@ -62,15 +62,25 @@ class BaseStationSecurityTests(unittest.TestCase):
                     self.assertEqual(service.get("user"), "")
                     self.assertEqual(service.get("pass"), "")
 
-    def test_ssh_and_sftp_reject_unknown_host_keys(self):
+    def test_every_pc_ssh_surface_rejects_unknown_host_keys(self):
         source = (REPO_ROOT / "assets" / "basestation" / "basestation.py").read_text(encoding="utf-8")
         ssh = source.split("class SSHManager:", 1)[1].split("# §6", 1)[0]
         self.assertIn("client.load_system_host_keys()", ssh)
         self.assertIn("paramiko.RejectPolicy()", ssh)
-        self.assertNotIn("paramiko.AutoAddPolicy()", ssh)
+        self.assertNotIn("paramiko.AutoAddPolicy()", source)
         self.assertNotIn("paramiko.Transport(", ssh)
         self.assertIn("client.open_sftp()", ssh)
-        self.assertGreaterEqual(ssh.count("SSHManager._new_client()"), 2)
+        self.assertGreaterEqual(source.count("SSHManager._new_client()"), 4)
+
+    def test_androidstation_uses_verified_host_keys_and_blank_new_profiles(self):
+        source = (REPO_ROOT / "assets" / "basestation" / "androidstation.py").read_text(encoding="utf-8")
+        self.assertNotIn("paramiko.AutoAddPolicy()", source)
+        self.assertIn("client.load_system_host_keys()", source)
+        self.assertIn("client.set_missing_host_key_policy(paramiko.RejectPolicy())", source)
+        self.assertIn("self.client = new_verified_ssh_client()", source)
+        self.assertIn('"ip": ""', source)
+        self.assertIn('"user": ""', source)
+        self.assertNotIn('"user": "root"', source)
 
     def test_documentation_keeps_the_remaining_uplink_boundary_explicit(self):
         readme = (REPO_ROOT / "assets" / "basestation" / "README.md").read_text(encoding="utf-8")

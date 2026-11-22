@@ -12,7 +12,7 @@ python3 basestation.py
 
 ## SSH host-key verification
 
-BaseStation uses the PC's system SSH known-hosts database and rejects unknown host keys for both command execution and SFTP uploads. Before connecting to a handheld for the first time, obtain its host-key fingerprint through a trusted local channel, verify it, and add the verified key to `~/.ssh/known_hosts`. A changed or unknown key must fail closed; do not enable automatic host-key acceptance.
+Every PC BaseStation SSH surface — command execution, interactive terminal, service cards and SFTP uploads — uses the PC's system SSH known-hosts database and rejects unknown host keys. AndroidStation applies the same fail-closed policy through Paramiko's known-hosts store; its new profiles start with blank IP, username and password fields. Before connecting to a handheld for the first time, obtain its host-key fingerprint through a trusted local channel, verify it, and add the verified key to `~/.ssh/known_hosts`. AndroidStation has no in-app pairing UI yet, so provision the verified host key in the environment's Paramiko known-hosts file before connecting. A changed or unknown key must fail closed; do not enable automatic host-key acceptance.
 
 New service profiles leave usernames and passwords blank. Enter credentials that are valid for the specific device; the old shared `root/root` and `muos/muos` values are no longer seeded. Existing saved profiles are not silently rewritten, so review any older profile and replace default credentials manually.
 

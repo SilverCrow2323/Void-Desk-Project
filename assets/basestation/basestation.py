@@ -917,8 +917,7 @@ class TerminalPanel(tk.Frame):
 
         def worker():
             try:
-                client = paramiko.SSHClient()
-                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                client = SSHManager._new_client()
                 client.connect(d["ip"], port=int(ssh_svc["port"]), username=ssh_svc["user"],
                                password=ssh_svc["pass"], timeout=10, banner_timeout=10, auth_timeout=10)
                 cols, rows = self._term_size()
@@ -1505,8 +1504,7 @@ class ConsoleMonitor:
         if not HAS_PARAMIKO or not self.device or not self.svc:
             return False
         try:
-            c = paramiko.SSHClient()
-            c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            c = SSHManager._new_client()
             c.connect(self.device["ip"], port=int(self.svc["port"]),
                       username=self.svc["user"], password=self.svc["pass"],
                       timeout=6, banner_timeout=6, auth_timeout=6)

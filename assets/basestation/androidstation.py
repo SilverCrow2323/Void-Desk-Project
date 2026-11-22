@@ -70,6 +70,15 @@ GREEN = get_color_from_hex("#00cc66")
 
 Window.clearcolor = BG0
 
+def new_verified_ssh_client():
+    """Trust only host keys provisioned in Paramiko's known-hosts store."""
+    if not HAS_PARAMIKO:
+        raise RuntimeError("paramiko is not installed")
+    client = paramiko.SSHClient()
+    client.load_system_host_keys()
+    client.set_missing_host_key_policy(paramiko.RejectPolicy())
+    return client
+
 KV = """
 #:import get_color_from_hex kivy.utils.get_color_from_hex
 #:import dp kivy.metrics.dp
@@ -478,7 +487,7 @@ KV = """
                     height: dp(20)
                 DarkTextInput:
                     id: cfg_ip
-                    hint_text: "192.168.1.100"
+                    hint_text: "Handheld IP address"
                 Label:
                     text: "SSH Port"
                     font_size: sp(11)
@@ -497,7 +506,7 @@ KV = """
                     height: dp(20)
                 DarkTextInput:
                     id: cfg_user
-                    hint_text: "root"
+                    hint_text: "SSH username"
                 Label:
                     text: "Password"
                     font_size: sp(11)
@@ -506,7 +515,7 @@ KV = """
                     height: dp(20)
                 DarkTextInput:
                     id: cfg_pass
-                    hint_text: "root"
+                    hint_text: "Password"
                     password: True
                 BoxLayout:
                     size_hint_y: None
@@ -709,8 +718,7 @@ class ConsoleClient(object):
         with self.lock:
             self.disconnect()
             try:
-                self.client = paramiko.SSHClient()
-                self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                self.client = new_verified_ssh_client()
                 self.client.connect(
                     ip, port=int(port), username=user, password=password,
                     timeout=8, banner_timeout=8, auth_timeout=8
@@ -884,9 +892,9 @@ class ConfigManager(object):
     def __init__(self, app):
         self.app = app
         self.data = {
-            "ip": "192.168.1.100",
+            "ip": "",
             "port": 22,
-            "user": "root",
+            "user": "",
             "password": "",
             "auto_connect": False,
             "macros": list(self.DEFAULT_MACROS),
