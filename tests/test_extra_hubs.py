@@ -147,5 +147,5 @@ def test_community_browser_launch_uses_clean_environment(monkeypatch, tmp_path):
 
     assert launched["args"] == ["chromium", "https://community.muos.dev"]
     assert launched["kwargs"]["start_new_session"] is True
-    assert "LD_LIBRARY_PATH" not in launched["kwargs"]["env"]
+    assert launched["kwargs"]["env"]["LD_LIBRARY_PATH"] == "/system/lib"
     assert "VOIDDESK_DIRECT_FB" not in launched["kwargs"]["env"]
