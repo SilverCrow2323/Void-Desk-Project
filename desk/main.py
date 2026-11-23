@@ -359,6 +359,24 @@ HUBS = {
     ("manifesto", "terminal", "i_manifesto", "i_manifesto_s", "act"),
     ("voidupdate", "gear", "i_update", "i_update_s", "act"),
  ]),
+ "games": ("games", "h_games", [
+    ("portmaster", "gamepad", "g_portmaster", "g_portmaster_s", "act"),
+    ("native", "gamepad", "g_native", "g_native_s", "act"),
+    ("collections", "folder", "g_collections", "g_collections_s", "act"),
+ ]),
+ "develop": ("develop", "h_develop", [
+    ("repl", "terminal", "d_repl", "d_repl_s", "act"),
+    ("editor", "text", "d_editor", "d_editor_s", "act"),
+    ("builder", "gear", "d_builder", "d_builder_s", "act"),
+ ]),
+ "community": ("community", "h_community", [
+    ("forum", "globe", "c_forum", "c_forum_s", "act"),
+    ("wiki", "book", "c_wiki", "c_wiki_s", "act"),
+    ("share", "folder", "c_share", "c_share_s", "act"),
+ ]),
+ "outerdesk": ("rocket", "h_outerdesk", [
+    ("apps", "rocket", "o_apps", "o_apps_s", "act"),
+ ]),
 }
 
 # --- [C2] CYCLES (User-togglable Settings) ---
@@ -1681,6 +1699,20 @@ TR = {
   "h_info": "INFO & ABOUT", "h_info_s": "progetto, manuale, guida rapida",
   "h_set": "SETTINGS", "h_set_s": "aspetto, audio, lingua dell'app",
   "h_exit": "END NODE", "h_exit_s": "torna a muOS",
+  "h_games": "GAMES", "h_games_s": "PortMaster, giochi nativi e raccolte",
+  "g_portmaster": "PortMaster", "g_portmaster_s": "Avvia PortMaster se installato",
+  "g_native": "Giochi nativi", "g_native_s": "Apri la cartella dei giochi",
+  "g_collections": "Collezioni", "g_collections_s": "Raccolte tematiche",
+  "h_develop": "DEVELOP", "h_develop_s": "REPL, editor e strumenti di build",
+  "d_repl": "Python REPL", "d_repl_s": "Console interattiva",
+  "d_editor": "VOID EDIT", "d_editor_s": "Apri e modifica file di testo",
+  "d_builder": "Build tools", "d_builder_s": "Strumenti e pacchetti di sviluppo",
+  "h_community": "COMMUNITY", "h_community_s": "Forum, wiki e condivisione",
+  "c_forum": "Forum muOS", "c_forum_s": "Apri community.muos.dev",
+  "c_wiki": "Wiki muOS", "c_wiki_s": "Documentazione ufficiale",
+  "c_share": "Condivisione", "c_share_s": "Cartella condivisa",
+  "h_outerdesk": "OUTERDESK", "h_outerdesk_s": "Applicazioni standalone e strumenti esterni",
+  "o_apps": "Applicazioni", "o_apps_s": "Catalogo delle app esterne",
   "f_inst": "Void Installer", "f_inst_s": "install e rimuovi (L1: tab)",
   "f_auto": "Avvio al boot", "f_auto_s": "app che partono col desktop",
   "f_upd": "Update Environments", "f_upd_s": "apt update + upgrade",
@@ -1861,6 +1893,20 @@ TR = {
   "h_info": "INFO & ABOUT", "h_info_s": "project, manual, quick guide",
   "h_set": "SETTINGS", "h_set_s": "look, audio, app language",
   "h_exit": "END NODE", "h_exit_s": "back to muOS",
+  "h_games": "GAMES", "h_games_s": "PortMaster, native games and collections",
+  "g_portmaster": "PortMaster", "g_portmaster_s": "Launch PortMaster when installed",
+  "g_native": "Native games", "g_native_s": "Open the games directory",
+  "g_collections": "Collections", "g_collections_s": "Curated game collections",
+  "h_develop": "DEVELOP", "h_develop_s": "REPL, editor and build tools",
+  "d_repl": "Python REPL", "d_repl_s": "Interactive Python console",
+  "d_editor": "VOID EDIT", "d_editor_s": "Open and edit text files",
+  "d_builder": "Build tools", "d_builder_s": "Development tools and packages",
+  "h_community": "COMMUNITY", "h_community_s": "Forums, wiki and sharing",
+  "c_forum": "muOS Forum", "c_forum_s": "Open community.muos.dev",
+  "c_wiki": "muOS Wiki", "c_wiki_s": "Official documentation",
+  "c_share": "Shared files", "c_share_s": "Open the shared folder",
+  "h_outerdesk": "OUTERDESK", "h_outerdesk_s": "Standalone apps and external tools",
+  "o_apps": "Applications", "o_apps_s": "External app catalogue",
   "f_inst": "Void Installer", "f_inst_s": "install & remove (L1: tab)",
   "f_auto": "Startup apps", "f_auto_s": "apps that boot with the desktop",
   "f_upd": "Update Environments", "f_upd_s": "apt update + upgrade",
@@ -3487,6 +3533,30 @@ class App(object):
                 return
             self.scroll = 0
             self.push("info")
+        elif hub in ("games", "develop", "community", "outerdesk"):
+            from desk.hubs import (
+                GamesHub, DevelopHub, CommunityHub, OuterdeskHub,
+            )
+            if not hasattr(self, "_extra_hub_modules"):
+                self._extra_hub_modules = {
+                    "games": GamesHub(self),
+                    "develop": DevelopHub(self),
+                    "community": CommunityHub(self),
+                    "outerdesk": OuterdeskHub(self),
+                }
+            handler = getattr(self._extra_hub_modules[hub], key, None)
+            if not callable(handler):
+                self.notify("Hub action unavailable", "%s/%s" % (hub, key),
+                            "warning")
+                return
+            try:
+                handler()
+            except Exception as exc:
+                sys.stderr.write(
+                    "[HUB] %s/%s failed: %s\\n" %
+                    (hub, key, str(exc)[:180])
+                )
+                self.notify("Hub action failed", str(exc)[:80], "warning")
 
 
 # --- [J4] CHD Batch Converter // HUB: WORKSHOP ---

@@ -32,3 +32,7 @@ def test_pygame_nexus_legacy_destinations_dispatch_to_existing_hubs():
     )
     for module in ("games", "develop", "community", "outerdesk"):
         assert f"from desk.hubs.{module} import" in hubs
+    for hub in ("games", "develop", "community", "outerdesk"):
+        assert f'"{hub}": (' in main
+    assert 'elif hub in ("games", "develop", "community", "outerdesk"):' in main
+    assert 'self._extra_hub_modules[hub]' in main
