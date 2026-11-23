@@ -29,7 +29,7 @@ def test_games_collections_opens_a_real_info_view(tmp_path):
     app = FakeApp(tmp_path)
     GamesHub(app).collections()
     assert app.states == ["info"]
-    assert app.info_title == "COLLEZIONI"
+    assert app.info_title == "COLLECTIONS"
 
 
 def test_develop_repl_opens_existing_python_console(tmp_path):
