@@ -1,7 +1,9 @@
-"""Profile-to-legacy-node adapter for the Pygame NEXUS renderer.
+"""Profile-to-legacy-node adapter for the active Pygame NEXUS renderer.
 
-QWASAR workspace IDs are the source of profile order/visibility/enabled state.
-Existing numeric node IDs, ring assignments and route destinations remain stable.
+The active desk.main App still uses the ten-node layout (IDs 0-9). Keep this
+mapping aligned with desk/main.py, not the separate/newer const.py layout.
+QWASAR workspace IDs control only the mapped nodes; legacy destinations stay
+in their established orbit and slot.
 """
 from __future__ import annotations
 
@@ -9,12 +11,13 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 
-# Keep these lists in lockstep with desk.const.NEXUS_RING_*.
-# Nodes 10-13 are established legacy destinations, not disposable placeholders.
+# Exact active Pygame layout from desk/main.py:
+# inner: START SESSION; mid: FORGE, UPLINK, MEDIA, WORKSHOP;
+# outer: RT:TOOLBOX, MUOS APPS, SETTINGS, INFO; far: END NODE.
 BASE_RINGS: tuple[tuple[int, ...], ...] = (
     (0,),
-    (3, 5, 2, 6, 10, 11),
-    (4, 1, 7, 8, 12, 13),
+    (3, 5, 2, 6),
+    (4, 1, 7, 8),
     (9,),
 )
 
@@ -31,16 +34,11 @@ WORKSPACE_BY_NODE: dict[int, str] = {
 
 PROTECTED_WORKSPACES = frozenset({"start-session", "end-node"})
 
-# Legacy-only nodes keep their relative slots when QWASAR workspaces move.
-# Ring 1: WORKSHOP, GAMES, DEVELOP.
-# Ring 2: MUOS APPS, COMMUNITY, OUTERDESK.
+# Legacy-only nodes keep stable positions between profile-controlled entries.
+# The numeric values intentionally leave room for the QWASAR order indices.
 LEGACY_SORT_ORDER: dict[int, float] = {
-    6: 3.5,
-    10: 4.5,
-    11: 5.5,
-    1: 4.5,
-    12: 5.5,
-    13: 6.5,
+    6: 3.5,  # WORKSHOP, mid orbit
+    1: 4.5,  # MUOS APPS, outer orbit
 }
 
 
@@ -49,10 +47,9 @@ def compose_nexus_profile(
 ) -> tuple[tuple[tuple[int, ...], ...], dict[int, dict[str, Any]]]:
     """Return effective ring IDs and per-node display/activation state.
 
-    Invalid/missing snapshots fall back to the exact legacy ring arrangement.
-    Only mapped QWASAR workspaces are reordered/hidden. All non-QWASAR nodes
-    remain in their original orbit. START SESSION and END NODE are forced
-    visible/enabled as recovery anchors even if a malformed snapshot arrives.
+    Invalid/missing snapshots fall back to the exact active legacy layout.
+    Only mapped QWASAR workspaces are reordered/hidden. All legacy nodes
+    retain their identity. START SESSION and END NODE remain recovery anchors.
     """
     states: dict[int, dict[str, Any]] = {}
     base_positions = {
@@ -119,3 +116,61 @@ def compose_nexus_profile(
         rings.append(tuple(visible_ids))
 
     return tuple(rings), states
+
+
+
+def node_is_enabled(states: Mapping[int, Mapping[str, Any]], node_id: int) -> bool:
+    """Legacy nodes default to enabled; mapped nodes honor profile state."""
+    state = states.get(node_id, {})
+    return state.get("enabled") is not False
+
+
+def resolve_enabled_slot(
+    ring: Sequence[int],
+    states: Mapping[int, Mapping[str, Any]],
+    current: int = 0,
+) -> int | None:
+    """Keep the current slot when usable, otherwise find the next usable slot."""
+    if not ring:
+        return None
+    start = current % len(ring)
+    for offset in range(len(ring)):
+        slot = (start + offset) % len(ring)
+        if node_is_enabled(states, ring[slot]):
+            return slot
+    return None
+
+
+def next_enabled_slot(
+    ring: Sequence[int],
+    states: Mapping[int, Mapping[str, Any]],
+    current: int,
+    direction: int,
+) -> int | None:
+    """Find the next enabled slot, skipping disabled visible nodes."""
+    if len(ring) < 2 or direction == 0:
+        return None
+    start = current % len(ring)
+    step_direction = 1 if direction > 0 else -1
+    for distance in range(1, len(ring)):
+        slot = (start + step_direction * distance) % len(ring)
+        if node_is_enabled(states, ring[slot]):
+            return slot
+    return None
+
+
+def next_enabled_ring(
+    rings: Sequence[Sequence[int]],
+    states: Mapping[int, Mapping[str, Any]],
+    current_ring: int,
+    direction: int,
+) -> int | None:
+    """Find the next in-bounds orbit containing at least one enabled node."""
+    if direction == 0:
+        return None
+    candidate = current_ring + (1 if direction > 0 else -1)
+    while 0 <= candidate < len(rings):
+        if resolve_enabled_slot(rings[candidate], states, 0) is not None:
+            return candidate
+        candidate += 1 if direction > 0 else -1
+    return None

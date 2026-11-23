@@ -202,6 +202,13 @@ import intro           # noqa: E402
 import jsmap           # noqa: E402
 import shell           # noqa: E402
 import sysinfo         # noqa: E402
+from desk.qwasar.nexus_adapter import (
+    compose_nexus_profile,
+    next_enabled_ring,
+    next_enabled_slot,
+    node_is_enabled,
+    resolve_enabled_slot,
+)  # noqa: E402
 
 
 # --- [B1] Screen Dimensions & Base Colors ---
@@ -2344,6 +2351,7 @@ class App(object):
         self.nexus_rot_mid = 0
         self.nexus_rot_out = 0
         self.nexus_rot_far = 0
+        self._refresh_nexus_profile_layout()
         self.home_scroll = 0
         self.sel_log = 0
         self.opt_sel = 0
@@ -11613,7 +11621,21 @@ class App(object):
             gcol = self.accent if grnd.random() < 0.5 else (200, 60, 90)
             pygame.draw.line(self.surface, gcol, (0, gy2), (W, gy2), 1)
 
+    def _refresh_nexus_profile_layout(self):
+        """Build the active Pygame orbit layout from the trusted snapshot."""
+        self.qwasar_nexus_rings, self.qwasar_nexus_states = (
+            compose_nexus_profile(self.qwasar_profile_composition)
+        )
+
+    def _nexus_node_enabled(self, node_id):
+        return node_is_enabled(
+            getattr(self, "qwasar_nexus_states", {}), node_id
+        )
+
     def _nexus_ring_list(self, ring):
+        rings = getattr(self, "qwasar_nexus_rings", None)
+        if isinstance(rings, (tuple, list)) and 0 <= ring < len(rings):
+            return rings[ring]
         return (NEXUS_RING_INNER, NEXUS_RING_MID, NEXUS_RING_OUT,
                 NEXUS_RING_FAR)[ring]
 
@@ -11647,8 +11669,14 @@ class App(object):
         indice piatto self.sel: lo tengo allineato al nodo che si
         trova davvero al punto di aggancio dell'anello on."""
         ring_list = self._nexus_ring_list(self.nexus_ring)
-        rot = self._nexus_ring_rot(self.nexus_ring)
-        self.sel = ring_list[rot % len(ring_list)]
+        slot = resolve_enabled_slot(
+            ring_list, getattr(self, "qwasar_nexus_states", {}),
+            self._nexus_ring_rot(self.nexus_ring),
+        )
+        if slot is None:
+            return
+        self._nexus_set_ring_rot(self.nexus_ring, slot)
+        self.sel = ring_list[slot]
 
     def _nexus_orbit_point(self, ring, angle_deg, radius):
         """Punto nel piano orbitale (prima di pan/zoom) per un dato
@@ -11764,8 +11792,8 @@ class App(object):
         self._nexus_dashed_ring(3, NEXUS_RING_RADIUS[3],
                                 self.nexus_ring == 3, sel_wx, sel_wy, zoom)
         positions = {}
-        for ring, ring_list in ((1, NEXUS_RING_MID), (2, NEXUS_RING_OUT),
-                                (3, NEXUS_RING_FAR)):
+        for ring in (1, 2, 3):
+            ring_list = self._nexus_ring_list(ring)
             for i, idx in enumerate(ring_list):
                 r_node = NEXUS_RING_RADIUS[ring]
                 angle = self._nexus_world_angle(ring, i, t_now)
@@ -11783,6 +11811,9 @@ class App(object):
             r = max(4, int(base_r * zoom * (0.75 + 0.32 * depth) *
                           (1.12 if sel else 1.0)))
             raw_col = NEXUS_NODE_COLOR.get(idx, self.accent)
+            enabled = self._nexus_node_enabled(idx)
+            if not enabled:
+                raw_col = tuple(int(channel * 0.38) for channel in raw_col)
             shade = 0.60 + 0.40 * depth
             col = tuple(min(255, int(c * shade)) for c in raw_col)
             if sel:
@@ -11796,7 +11827,7 @@ class App(object):
             spin_speed = 0.28 + (idx * 37 % 97) / 97.0 * 0.8
             self._nexus_sphere(sx, sy, r, col, self.menu_icons[idx],
                                t_now * spin_speed, 0.15 if sel else 0.0,
-                               spin=True, seed=idx, selected=sel, idx=idx)
+                               spin=enabled, seed=idx, selected=sel, idx=idx)
             if sel:
                 self.last_sel_rect = (sx - r, sy - r, r * 2, r * 2)
         self._nexus_sun(sun_sx, sun_sy, t_now, zoom)
@@ -11862,6 +11893,8 @@ class App(object):
         di una riga sola troncata."""
         idx = self.sel
         label, sub = self.menu[idx]
+        profile_state = getattr(self, "qwasar_nexus_states", {}).get(idx, {})
+        label = profile_state.get("label") or label
         col = NEXUS_NODE_COLOR.get(idx, self.accent)
         icon_key = self.menu_icons[idx]
         bx = bx0
@@ -11932,12 +11965,18 @@ class App(object):
         precedente -- niente scatti, e la deriva orbitale continua a
         scorrere sotto durante il movimento."""
         ring_list = self._nexus_ring_list(self.nexus_ring)
-        if len(ring_list) < 2:
+        i0 = self._nexus_ring_rot(self.nexus_ring)
+        i1 = next_enabled_slot(
+            ring_list, getattr(self, "qwasar_nexus_states", {}),
+            i0, direction,
+        )
+        if i1 is None:
             return
         self.play("nexus")
-        i0 = self._nexus_ring_rot(self.nexus_ring)
         zoom0 = NEXUS_ZOOM.get(self.sel, 1.0)
-        i1 = (i0 + direction) % len(ring_list)
+        slot_distance = ((i1 - i0) % len(ring_list) if direction > 0
+                         else (i0 - i1) % len(ring_list))
+        travel = slot_distance if direction > 0 else -slot_distance
         self._nexus_set_ring_rot(self.nexus_ring, i1)
         self._nexus_sync_sel()
         zoom1 = NEXUS_ZOOM.get(self.sel, 1.0)
@@ -11946,7 +11985,7 @@ class App(object):
             k = (f + 1) / float(frames)
             t_now = time.time()
             pos = self._nexus_camera_target_pos(
-                self.nexus_ring, i0 + direction * k, t_now)
+                self.nexus_ring, i0 + travel * k, t_now)
             zoom = zoom0 + (zoom1 - zoom0) * k
             self.header("__brand__")
             self._nexus_bg()
@@ -11964,8 +12003,12 @@ class App(object):
         nuova -- tutte le orbite restano visibili per tutto il
         tempo, e' solo l'inquadratura (e lo zoom) che cambia. v10.6:
         il limite arriva a 3, la nuova orbita lontana di END NODE."""
-        new_ring = self.nexus_ring + direction
-        if new_ring < 0 or new_ring > 3:
+        new_ring = next_enabled_ring(
+            getattr(self, "qwasar_nexus_rings", ()),
+            getattr(self, "qwasar_nexus_states", {}),
+            self.nexus_ring, direction,
+        )
+        if new_ring is None:
             return
         self.play("nexus")
         old_ring = self.nexus_ring
@@ -13575,7 +13618,8 @@ class App(object):
                 elif btn == "DOWN":
                     self.nexus_ring_switch(1)
                 elif btn == "A":
-                    self.activate(self.sel)
+                    if self._nexus_node_enabled(self.sel):
+                        self.activate(self.sel)
                 elif btn == "START":
                     self.crt_off()
             if style == "blame":
