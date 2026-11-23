@@ -7,6 +7,22 @@
 class HubMixin:
     """Base mixin for hub modules. Provides common hub utilities."""
 
+    def external_env(self):
+        """Return a clean environment for launching non-Void-Desk programs.
+
+        The app's bundled Pygame/SDL libraries and direct-framebuffer flags
+        must not leak into PortMaster, browsers or other external tools.
+        """
+        import os
+        env = os.environ.copy()
+        for key in (
+            "LD_LIBRARY_PATH", "PYTHONPATH", "PYGAME_HIDE_SUPPORT_PROMPT",
+            "VOIDDESK_DIRECT_FB", "VOIDCAST_FB_DEV", "VOIDCAST_FB_SYSFS",
+            "VOIDCAST_FB",
+        ):
+            env.pop(key, None)
+        return env
+
     def comp_action(self, key):
         """Void Installer action router."""
         import os

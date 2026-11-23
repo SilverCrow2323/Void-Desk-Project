@@ -35,7 +35,7 @@ class GamesHub(HubMixin):
         subprocess.Popen(
             ["/bin/sh", pm],
             cwd=os.path.dirname(pm),
-            env=os.environ.copy(),
+            env=self.external_env(),
             start_new_session=True,
         )
         app.exit_code = 0
