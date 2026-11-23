@@ -1,3 +1,4 @@
+from pathlib import Path
 from desk.hubs.games import GamesHub
 from desk.hubs.develop import DevelopHub
 from desk.hubs.community import CommunityHub
