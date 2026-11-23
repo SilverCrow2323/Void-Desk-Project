@@ -181,7 +181,8 @@ import sys
 import threading
 import time
 
-os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+if os.environ.get("VOIDDESK_DIRECT_FB") != "1":
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS", "1")
 
 APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -202,6 +203,7 @@ import intro           # noqa: E402
 import jsmap           # noqa: E402
 import shell           # noqa: E402
 import sysinfo         # noqa: E402
+from desk.muos_video import init_muos_surface, poll_muos_events  # noqa: E402
 from desk.qwasar.nexus_adapter import (
     compose_nexus_profile,
     next_enabled_ring,
@@ -2182,19 +2184,26 @@ class App(object):
 
 # --- [E1] __init__ — Initialization, Config Loading, Boot Sequence ---
     def __init__(self):
-        # Guard: device has no X11/KMS, retry with dummy + fbdisplay
-        try:
-            pygame.display.init()
-        except pygame.error:
-            import os as _os_ffb
-            _os_ffb.environ.setdefault('SDL_VIDEODRIVER', 'dummy')
-            _os_ffb.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
-            _os_ffb.environ.setdefault('VOIDCAST_FB', '1')
-            pygame.display.init()
-        pygame.font.init()
-        self.surface = pygame.display.set_mode((W, H))
-        if not fbdisplay.attach(self.surface):
-            print("fbdisplay not available")
+        # muOS H700 has no dependable SDL video backend in every firmware
+        # image. In direct-FB mode render to a software Surface and present
+        # frames through fbdisplay without initializing SDL's display driver.
+        if os.environ.get("VOIDDESK_DIRECT_FB") == "1":
+            pygame.font.init()
+            self.surface = init_muos_surface(pygame, fbdisplay, (W, H))
+            print("[muOS] direct framebuffer active: %s" % fbdisplay.info())
+        else:
+            try:
+                pygame.display.init()
+            except pygame.error:
+                import os as _os_ffb
+                _os_ffb.environ.setdefault('SDL_VIDEODRIVER', 'dummy')
+                _os_ffb.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
+                _os_ffb.environ.setdefault('VOIDCAST_FB', '1')
+                pygame.display.init()
+            pygame.font.init()
+            self.surface = pygame.display.set_mode((W, H))
+            if not fbdisplay.attach(self.surface):
+                print("fbdisplay not available")
         self.cfg = load_cfg()
         self.qwasar_profile_options = self._qwasar_profile_options()
         self.qwasar_profile_pending = False
@@ -23091,7 +23100,10 @@ class App(object):
                     self.on_button("LEFT")
                 elif hx > 0:
                     self.on_button("RIGHT")
-            for e in pygame.event.get():
+            queued_events = poll_muos_events(
+                pygame, direct_fb=(os.environ.get("VOIDDESK_DIRECT_FB") == "1")
+            )
+            for e in queued_events:
                 if e.type == pygame.QUIT:
                     self.running = False
             self.render()
