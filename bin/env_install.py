@@ -119,8 +119,6 @@ def main():
         env = ("DEBIAN_FRONTEND=noninteractive "
                "PATH=/usr/sbin:/usr/bin:/sbin:/bin")
         aptop = ("-o Acquire::ForceIPv4=true "
-                 "-o Acquire::https::Verify-Peer=false "
-                 "-o Acquire::https::Verify-Host=false "
                  "-o Acquire::Retries=2")
 
         log("apt-get update...", screen)

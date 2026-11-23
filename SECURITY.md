@@ -16,5 +16,6 @@ Include the affected version, device/firmware, component, impact and a minimal r
 - Do not expose local web/file services to untrusted networks.
 - Review package and shell operations before confirming them.
 - Keep the device clock and CA certificates valid so HTTPS verification stays enabled.
+- Chroot APT operations must retain the default TLS peer and hostname checks; never work around repository certificate failures by disabling either check.
 - Treat downloaded archives, playlists, add-ons and configuration received from others as untrusted.
 - Back up important data before image, package or firmware operations.

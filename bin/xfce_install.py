@@ -250,8 +250,6 @@ def apt_with_progress(pkgs, scr, log, remove=False, upgrade=False):
            "PATH=/usr/sbin:/usr/bin:/sbin:/bin",
            "apt-get", "-o", "APT::Status-Fd=%d" % w,
            "-o", "Acquire::ForceIPv4=true",
-           "-o", "Acquire::https::Verify-Peer=false",
-           "-o", "Acquire::https::Verify-Host=false",
            "-o", "Acquire::Retries=2",
            ] + (["upgrade", "-y"] if upgrade else
                 ["remove", "-y", "--purge", "--autoremove"] if remove
@@ -441,8 +439,6 @@ def main():
             subprocess.call(["chroot", MNT, "/bin/bash", "-c",
                              "DEBIAN_FRONTEND=noninteractive apt-get "
                              "-o Acquire::ForceIPv4=true "
-                             "-o Acquire::https::Verify-Peer=false "
-                             "-o Acquire::https::Verify-Host=false update"],
                             stdout=logf, stderr=logf)
         if script:
             rc = run_script(script, scr, logf)
