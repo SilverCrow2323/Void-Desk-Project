@@ -116,3 +116,61 @@ def compose_nexus_profile(
         rings.append(tuple(visible_ids))
 
     return tuple(rings), states
+
+
+
+def node_is_enabled(states: Mapping[int, Mapping[str, Any]], node_id: int) -> bool:
+    """Legacy nodes default to enabled; mapped nodes honor profile state."""
+    state = states.get(node_id, {})
+    return state.get("enabled") is not False
+
+
+def resolve_enabled_slot(
+    ring: Sequence[int],
+    states: Mapping[int, Mapping[str, Any]],
+    current: int = 0,
+) -> int | None:
+    """Keep the current slot when usable, otherwise find the next usable slot."""
+    if not ring:
+        return None
+    start = current % len(ring)
+    for offset in range(len(ring)):
+        slot = (start + offset) % len(ring)
+        if node_is_enabled(states, ring[slot]):
+            return slot
+    return None
+
+
+def next_enabled_slot(
+    ring: Sequence[int],
+    states: Mapping[int, Mapping[str, Any]],
+    current: int,
+    direction: int,
+) -> int | None:
+    """Find the next enabled slot, skipping disabled visible nodes."""
+    if len(ring) < 2 or direction == 0:
+        return None
+    start = current % len(ring)
+    step_direction = 1 if direction > 0 else -1
+    for distance in range(1, len(ring)):
+        slot = (start + step_direction * distance) % len(ring)
+        if node_is_enabled(states, ring[slot]):
+            return slot
+    return None
+
+
+def next_enabled_ring(
+    rings: Sequence[Sequence[int]],
+    states: Mapping[int, Mapping[str, Any]],
+    current_ring: int,
+    direction: int,
+) -> int | None:
+    """Find the next in-bounds orbit containing at least one enabled node."""
+    if direction == 0:
+        return None
+    candidate = current_ring + (1 if direction > 0 else -1)
+    while 0 <= candidate < len(rings):
+        if resolve_enabled_slot(rings[candidate], states, 0) is not None:
+            return candidate
+        candidate += 1 if direction > 0 else -1
+    return None
