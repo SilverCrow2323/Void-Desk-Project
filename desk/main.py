@@ -211,6 +211,7 @@ from desk.qwasar.nexus_adapter import (
     node_is_enabled,
     resolve_enabled_slot,
 )  # noqa: E402
+from desk.nexus_tree import draw_life_tree  # noqa: E402
 
 
 # --- [B1] Screen Dimensions & Base Colors ---
@@ -2630,6 +2631,7 @@ class App(object):
     def rebuild_menu(self):
         xfce_ok = os.path.exists(os.path.join(DATA, ".xfce_ready"))
         t = self.t
+        it = (self.lang == "it")
         self.menu = [
             (t("sess"), t("sess_s")),
             (t("mapps"), t("mapps_s")),
@@ -2641,10 +2643,24 @@ class App(object):
             (t("h_set"), t("h_set_s")),
             (t("h_info"), t("h_info_s")),
             (t("h_exit"), t("h_exit_s")),
+            ("GIOCHI" if it else "GAMES",
+             "Giochi nativi, PortMaster e raccolte" if it
+             else "Native games, PortMaster and collections"),
+            ("SVILUPPO" if it else "DEVELOP",
+             "Terminale, editor e strumenti di sviluppo" if it
+             else "Terminal, editor and development tools"),
+            ("COMMUNITY",
+             "Forum, wiki e condivisione" if it
+             else "Forums, wiki and sharing"),
+            ("OUTERDESK",
+             "Applicazioni e ambienti esterni" if it
+             else "External applications and environments"),
         ]
-        self.menu_icons = ["start", "window", "speaker", "forge",
-                           "toolbox", "uplink", "workshop", "gear",
-                           "book", "power"]
+        self.menu_icons = [
+            "start", "window", "speaker", "forge", "toolbox", "uplink",
+            "workshop", "gear", "book", "power", "games", "develop",
+            "community", "outerdesk",
+        ]
 
     # ---------------------------------------------------- stile SPDW/BLAME!
 
@@ -11816,6 +11832,28 @@ class App(object):
                 positions[idx] = (sx, sy, depth)
         sun_sx, sun_sy = self._nexus_to_screen(0.0, 0.0, sel_wx, sel_wy,
                                                zoom)
+        # The Tree of Life is a decorative overlay; orbital navigation and
+        # routes remain authoritative. Keep it fail-open on device runtimes.
+        try:
+            tree_positions = {0: (sun_sx, sun_sy)}
+            tree_positions.update({
+                idx: (item[0], item[1]) for idx, item in positions.items()
+            })
+            disabled_nodes = {
+                idx for idx, state in self.qwasar_nexus_states.items()
+                if state.get("enabled") is False
+            }
+            draw_life_tree(
+                self.surface, tree_positions, NEXUS_NODE_COLOR, self.sel,
+                t_now, disabled_nodes=disabled_nodes,
+            )
+        except Exception as exc:
+            if not getattr(self, "_nexus_tree_error_logged", False):
+                sys.stderr.write(
+                    "[NEXUS] Tree overlay disabled after render error: %s\n"
+                    % str(exc)[:180]
+                )
+                self._nexus_tree_error_logged = True
         order = sorted(positions.items(), key=lambda kv: kv[1][2])
         for idx, (sx, sy, depth) in order:
             sel = (idx == self.sel)
@@ -17178,6 +17216,15 @@ class App(object):
         elif i == 9:
             self.shutdown_sel = 0
             self.push("shutdownmenu", shape=shape)
+        elif i in (10, 11, 12, 13):
+            hub = {
+                10: "games",
+                11: "develop",
+                12: "community",
+                13: "outerdesk",
+            }[i]
+            self.hub_sel = 0
+            self.push("hub:" + hub, shape=shape)
 
     # -------------------------------------------------------------- render
     def render_home_hud(self):

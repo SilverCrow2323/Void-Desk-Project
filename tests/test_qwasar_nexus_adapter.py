@@ -12,13 +12,13 @@ def test_missing_or_invalid_composition_keeps_exact_active_pygame_rings():
     assert rings == BASE_RINGS
     assert rings == (
         (0,),
-        (3, 5, 2, 6),
-        (4, 1, 7, 8),
+        (3, 5, 2, 6, 10, 11),
+        (4, 1, 7, 8, 12, 13),
         (9,),
     )
-    assert set(states) == set(range(10))
-    assert states[1]["workspace_id"] is None
-    assert states[6]["workspace_id"] is None
+    assert set(states) == set(range(14))
+    for node_id in (1, 6, 10, 11, 12, 13):
+        assert states[node_id]["workspace_id"] is None
     assert compose_nexus_profile({"workspaces": "not-a-list"})[0] == BASE_RINGS
 
 
@@ -41,16 +41,16 @@ def test_profile_reorders_hides_and_disables_only_mapped_workspaces():
 
     assert rings[0] == (0,)
     # UPLINK moves before THE FORGE; hidden MEDIA VAULT disappears.
-    # WORKSHOP remains in its established slot.
-    assert rings[1] == (5, 3, 6)
-    # SETTINGS, MUOS APPS, TOOLBOX, INFO.
-    assert rings[2] == (7, 1, 4, 8)
+    # WORKSHOP, GAMES and DEVELOP keep their established orbit slots.
+    assert rings[1] == (5, 3, 6, 10, 11)
+    # SETTINGS, MUOS APPS, TOOLBOX, COMMUNITY, INFO and OUTERDESK.
+    assert rings[2] == (7, 1, 4, 12, 8, 13)
     assert rings[3] == (9,)
     assert states[3]["enabled"] is False
     assert states[3]["visible"] is True
     assert states[2]["visible"] is False
     assert states[4]["label"] == "MY TOOLBOX"
-    assert set(states) == set(range(10))
+    assert set(states) == set(range(14))
 
 
 def test_protected_start_and_end_are_never_hidden_or_disabled_by_adapter():
@@ -89,10 +89,10 @@ def test_legacy_nodes_keep_stable_identity_and_are_not_reinterpreted():
     }
 
     rings, states = compose_nexus_profile(composition)
-    assert rings[1] == (3, 5, 2, 6)
-    assert rings[2] == (4, 1, 7, 8)
-    assert states[1]["workspace_id"] is None
-    assert states[6]["workspace_id"] is None
+    assert rings[1] == (3, 5, 2, 6, 10, 11)
+    assert rings[2] == (4, 1, 7, 12, 8, 13)
+    for node_id in (1, 6, 10, 11, 12, 13):
+        assert states[node_id]["workspace_id"] is None
 
 
 
