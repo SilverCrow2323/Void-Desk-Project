@@ -227,6 +227,9 @@ def test_external_tool_registry_launches_each_declared_runtime_type(
     )
     app = main_module.App.__new__(main_module.App)
     app.notify = lambda *args: None
+    app.handoff = lambda label: None
+    app.running = True
+    app.exit_code = None
 
     app.launch_external_tool("sh-tool")
     app.launch_external_tool("love-tool")
@@ -250,3 +253,5 @@ def test_external_tool_registry_launches_each_declared_runtime_type(
         assert "PYTHONPATH" not in kwargs["env"]
         assert "VOIDDESK_DIRECT_FB" not in kwargs["env"]
         assert kwargs["start_new_session"] is True
+    assert app.running is False
+    assert app.exit_code == 0

@@ -6558,10 +6558,16 @@ class App(object):
             return
 
         try:
+            self.handoff(
+                "AVVIO %s..." % tool.get("name", tool_id)
+                if self.lang == "it"
+                else "LAUNCHING %s..." % tool.get("name", tool_id)
+            )
             _subprocess.Popen(
                 command, cwd=cwd, env=launch_env, start_new_session=True
             )
-            self.notify("Launching", tool.get("name", tool_id), "success")
+            self.exit_code = 0
+            self.running = False
         except Exception as exc:
             self.notify("Launch failed", str(exc)[:80], "warning")
 
