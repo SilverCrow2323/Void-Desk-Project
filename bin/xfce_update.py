@@ -78,8 +78,7 @@ def main():
         subprocess.call(["chroot", MNT, "/bin/bash", "-c",
                          "DEBIAN_FRONTEND=noninteractive apt-get "
                          "-o Acquire::ForceIPv4=true "
-                         "-o Acquire::https::Verify-Peer=false "
-                         "-o Acquire::https::Verify-Host=false update"],
+                        "update"],
                         stdout=log, stderr=log)
         rc = xi.apt_with_progress([], scr, log, upgrade=True)
         if rc != 0:

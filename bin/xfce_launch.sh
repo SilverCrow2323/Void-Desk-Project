@@ -328,7 +328,7 @@ done
 # componenti di servizio (una tantum): accessibilita', zenity, task manager
 if [ ! -f "$MNT/.vd_pkgs_v6" ]; then
 	PROG 68 "pacchetti di servizio (una tantum: minuti)" "service packages (one-off: minutes)"
-	chroot "$MNT" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::ForceIPv4=true -o Acquire::https::Verify-Peer=false -o Acquire::https::Verify-Host=false install -y zenity xfce4-taskmanager xdotool x11-utils matchbox-keyboard alsa-utils pulseaudio pavucontrol bluez blueman wpagui gvfs gvfs-backends udisks2 thunar-volman" >>"$XLOG" 2>&1 \
+	chroot "$MNT" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::ForceIPv4=true install -y zenity xfce4-taskmanager xdotool x11-utils matchbox-keyboard alsa-utils pulseaudio pavucontrol bluez blueman wpagui gvfs gvfs-backends udisks2 thunar-volman" >>"$XLOG" 2>&1 \
 		&& touch "$MNT/.vd_pkgs_v6"
 fi
 
