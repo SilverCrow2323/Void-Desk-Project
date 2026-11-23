@@ -375,7 +375,9 @@ HUBS = {
     ("share", "folder", "c_share", "c_share_s", "act"),
  ]),
  "outerdesk": ("rocket", "h_outerdesk", [
-    ("apps", "rocket", "o_apps", "o_apps_s", "act"),
+    ("voidcast", "video", "o_voidcast", "o_voidcast_s", "act"),
+    ("bgm_normalizer", "music", "o_bgm", "o_bgm_s", "act"),
+    ("file_gd_x", "folder", "o_filegd", "o_filegd_s", "act"),
  ]),
 }
 
@@ -1713,6 +1715,9 @@ TR = {
   "c_share": "Condivisione", "c_share_s": "Cartella condivisa",
   "h_outerdesk": "OUTERDESK", "h_outerdesk_s": "Applicazioni standalone e strumenti esterni",
   "o_apps": "Applicazioni", "o_apps_s": "Catalogo delle app esterne",
+  "o_voidcast": "VoidCast IPTV", "o_voidcast_s": "Client IPTV portatile",
+  "o_bgm": "BGM Normalizer", "o_bgm_s": "Normalizza e converti la musica",
+  "o_filegd": "File-GD X", "o_filegd_s": "File manager a doppio pannello",
   "f_inst": "Void Installer", "f_inst_s": "install e rimuovi (L1: tab)",
   "f_auto": "Avvio al boot", "f_auto_s": "app che partono col desktop",
   "f_upd": "Update Environments", "f_upd_s": "apt update + upgrade",
@@ -1907,6 +1912,9 @@ TR = {
   "c_share": "Shared files", "c_share_s": "Open the shared folder",
   "h_outerdesk": "OUTERDESK", "h_outerdesk_s": "Standalone apps and external tools",
   "o_apps": "Applications", "o_apps_s": "External app catalogue",
+  "o_voidcast": "VoidCast IPTV", "o_voidcast_s": "Portable IPTV client",
+  "o_bgm": "BGM Normalizer", "o_bgm_s": "Normalize and convert music",
+  "o_filegd": "File-GD X", "o_filegd_s": "Dual-pane file manager",
   "f_inst": "Void Installer", "f_inst_s": "install & remove (L1: tab)",
   "f_auto": "Startup apps", "f_auto_s": "apps that boot with the desktop",
   "f_upd": "Update Environments", "f_upd_s": "apt update + upgrade",
@@ -3533,16 +3541,15 @@ class App(object):
                 return
             self.scroll = 0
             self.push("info")
-        elif hub in ("games", "develop", "community", "outerdesk"):
-            from desk.hubs import (
-                GamesHub, DevelopHub, CommunityHub, OuterdeskHub,
-            )
+        elif hub == "outerdesk":
+            self.launch_external_tool(key)
+        elif hub in ("games", "develop", "community"):
+            from desk.hubs import GamesHub, DevelopHub, CommunityHub
             if not hasattr(self, "_extra_hub_modules"):
                 self._extra_hub_modules = {
                     "games": GamesHub(self),
                     "develop": DevelopHub(self),
                     "community": CommunityHub(self),
-                    "outerdesk": OuterdeskHub(self),
                 }
             handler = getattr(self._extra_hub_modules[hub], key, None)
             if not callable(handler):
@@ -6444,22 +6451,115 @@ class App(object):
 
 # --- [R2] CRT Off Animation // HUB: END SESSION ---
     def notify(self, title, body="", kind="standard"):
-        """Show a toast notification. Recovered minimal body."""
+        """Queue a visible toast and keep a bounded diagnostic history."""
+        if kind not in NOTIF_KINDS:
+            kind = "standard"
+        note = {
+            "title": str(title)[:60],
+            "body": str(body)[:90],
+            "kind": kind,
+            "ts": time.time(),
+        }
+        if not hasattr(self, "notif_queue"):
+            self.notif_queue = []
+        self.notif_queue.append(note)
+        if not hasattr(self, "notif_unread"):
+            self.notif_unread = 0
+        self.notif_unread += 1
         try:
             if not hasattr(self, "_notifs_log"):
                 self._notifs_log = []
-            self._notifs_log.append({
-                "title": title,
-                "body": body,
-                "kind": kind,
-                "ts": time.time(),
-            })
-            if len(self._notifs_log) > 50:
-                self._notifs_log = self._notifs_log[-50:]
+            self._notifs_log.append(note)
+            self._notifs_log = self._notifs_log[-50:]
+            history = self.cfg.setdefault("notification_history", [])
+            history.append(note)
+            del history[:-60]
+            save_cfg(self.cfg)
         except Exception:
             pass
 
     def launch_external_tool(self, tool_id):
+        """Launch a registered external tool using its declared launcher type."""
+        import json as _json
+        import os as _os
+        import shutil as _shutil
+        import subprocess as _subprocess
+        from desk.hubs import HubMixin
+
+        tools_path = _os.path.join(APP_DIR, "external", "tools.json")
+        try:
+            with open(tools_path, encoding="utf-8") as stream:
+                tools = _json.load(stream).get("tools", [])
+        except Exception as exc:
+            self.notify("External tools registry missing", str(exc)[:80],
+                        "warning")
+            return
+
+        tool = next((item for item in tools if item.get("id") == tool_id), None)
+        if not tool:
+            self.notify("Unknown external tool", str(tool_id), "warning")
+            return
+
+        base = APP_DIR
+        relative_path = tool.get("path", "")
+        if relative_path.startswith("../"):
+            base = _os.path.dirname(APP_DIR)
+            relative_path = relative_path[3:]
+        full_path = _os.path.abspath(_os.path.join(base, relative_path or "."))
+        if not _os.path.exists(full_path):
+            self.notify("Tool not installed", tool.get("name", tool_id),
+                        "warning")
+            return
+
+        launcher_type = tool.get("launcher_type", "sh")
+        launcher = tool.get("launcher", "")
+        clean_env = HubMixin.external_env(self)
+        command = None
+        cwd = APP_DIR
+
+        if launcher_type == "love":
+            love_bin = _os.path.join(APP_DIR, "lib", "love")
+            if not _os.path.isfile(love_bin):
+                love_bin = _shutil.which("love")
+            if not love_bin:
+                self.notify("LÖVE binary not found", tool.get("name", tool_id),
+                            "warning")
+                return
+            command = [love_bin, full_path]
+        elif launcher_type == "portable-voidcast":
+            launch_base = (_os.path.dirname(APP_DIR)
+                           if launcher.startswith("../") else APP_DIR)
+            launch_path = launcher[3:] if launcher.startswith("../") else launcher
+            launch_target = _os.path.abspath(
+                _os.path.join(launch_base, launch_path)
+            )
+            if _os.path.isdir(launch_target):
+                launch_target = _os.path.join(launch_target, "mux_launch.sh")
+            if not _os.path.isfile(launch_target):
+                self.notify("Tool launcher missing", launch_target, "warning")
+                return
+            command = ["sh", launch_target]
+            cwd = _os.path.dirname(launch_target)
+        elif launcher_type == "sh":
+            launch_target = _os.path.abspath(_os.path.join(APP_DIR, launcher))
+            if not _os.path.isfile(launch_target):
+                self.notify("Tool launcher missing", launch_target, "warning")
+                return
+            command = ["sh", launch_target]
+            cwd = _os.path.dirname(launch_target)
+        else:
+            self.notify("Unsupported launcher type", launcher_type, "warning")
+            return
+
+        try:
+            _subprocess.Popen(
+                command, cwd=cwd, env=clean_env, start_new_session=True
+            )
+            self.notify("Launching", tool.get("name", tool_id), "success")
+        except Exception as exc:
+            self.notify("Launch failed", str(exc)[:80], "warning")
+
+    def _media_panel_toggle(self):
         """Launch an external tool by id from external/tools.json."""
         import json as _json, subprocess, os as _os
         tools_path = os.path.join(APP_DIR, "external", "tools.json")
@@ -6513,20 +6613,6 @@ class App(object):
                 self.notify(f"Launching {tool.get('name', tool_id)}...")
             except Exception as e:
                 self.notify(f"Launch failed: {e}", "warning")
-        """Mette in coda una notifica cyberpunk. Richiamabile da
-        qualunque punto dell'app: messaggi dal Basestation, eventi
-        interni (screenshot inviata, aggiornamento completed...)."""
-        if kind not in NOTIF_KINDS:
-            kind = "standard"
-        note = {"title": str(title)[:60], "body": str(body)[:90],
-                "kind": kind, "ts": time.time()}
-        self.notif_queue.append(note)
-        history = self.cfg.setdefault("notification_history", [])
-        history.append(note)
-        del history[:-60]
-        self.notif_unread += 1
-        save_cfg(self.cfg)
-
     def _media_panel_toggle(self):
         if self.media_panel_phase is None:
             self.media_panel_phase = "in"
