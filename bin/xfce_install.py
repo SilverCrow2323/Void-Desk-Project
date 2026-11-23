@@ -438,7 +438,8 @@ def main():
         if not script:
             subprocess.call(["chroot", MNT, "/bin/bash", "-c",
                              "DEBIAN_FRONTEND=noninteractive apt-get "
-                             "-o Acquire::ForceIPv4=true "
+                             " -o Acquire::ForceIPv4=true "
+                            "update"],
                             stdout=logf, stderr=logf)
         if script:
             rc = run_script(script, scr, logf)
