@@ -79,10 +79,8 @@ run_engine() {
         fi
     fi
 
-    # The py engine needs a bootstrapped pygame runtime (desk/../runtime).
-    # If it was never built (or got wiped), build it now instead of
-    # crashing; if that's not possible (offline, download failure, etc.)
-    # fall back to LOVE so the device never gets stuck on a broken choice.
+    # The Pygame runtime is installed offline-first from the bundled ARM64
+    # archives; PyPI is only a verified-TLS fallback for other compatible hosts.
     if [ "$ENGINE" = "love" ] && {
         [ ! -x "$APP_DIR/lib/love" ] || [ ! -f "$APP_DIR/lib/liblove-11.5.so" ];
     }; then
