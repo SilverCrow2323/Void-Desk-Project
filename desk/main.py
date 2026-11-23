@@ -211,6 +211,7 @@ from desk.qwasar.nexus_adapter import (
     node_is_enabled,
     resolve_enabled_slot,
 )  # noqa: E402
+from desk.nexus_tree import draw_life_tree  # noqa: E402
 
 
 # --- [B1] Screen Dimensions & Base Colors ---
@@ -357,6 +358,26 @@ HUBS = {
     ("guide",   "gamepad", "i_guide", "i_guide_s", "act"),
     ("manifesto", "terminal", "i_manifesto", "i_manifesto_s", "act"),
     ("voidupdate", "gear", "i_update", "i_update_s", "act"),
+ ]),
+ "games": ("games", "h_games", [
+    ("portmaster", "gamepad", "g_portmaster", "g_portmaster_s", "act"),
+    ("native", "gamepad", "g_native", "g_native_s", "act"),
+    ("collections", "folder", "g_collections", "g_collections_s", "act"),
+ ]),
+ "develop": ("develop", "h_develop", [
+    ("repl", "terminal", "d_repl", "d_repl_s", "act"),
+    ("editor", "text", "d_editor", "d_editor_s", "act"),
+    ("builder", "gear", "d_builder", "d_builder_s", "act"),
+ ]),
+ "community": ("community", "h_community", [
+    ("forum", "globe", "c_forum", "c_forum_s", "act"),
+    ("wiki", "book", "c_wiki", "c_wiki_s", "act"),
+    ("share", "folder", "c_share", "c_share_s", "act"),
+ ]),
+ "outerdesk": ("rocket", "h_outerdesk", [
+    ("voidcast", "video", "o_voidcast", "o_voidcast_s", "act"),
+    ("bgm_normalizer", "music", "o_bgm", "o_bgm_s", "act"),
+    ("file_gd_x", "folder", "o_filegd", "o_filegd_s", "act"),
  ]),
 }
 
@@ -1680,6 +1701,23 @@ TR = {
   "h_info": "INFO & ABOUT", "h_info_s": "progetto, manuale, guida rapida",
   "h_set": "SETTINGS", "h_set_s": "aspetto, audio, lingua dell'app",
   "h_exit": "END NODE", "h_exit_s": "torna a muOS",
+  "h_games": "GAMES", "h_games_s": "PortMaster, giochi nativi e raccolte",
+  "g_portmaster": "PortMaster", "g_portmaster_s": "Avvia PortMaster se installato",
+  "g_native": "Giochi nativi", "g_native_s": "Apri la cartella dei giochi",
+  "g_collections": "Collezioni", "g_collections_s": "Raccolte tematiche",
+  "h_develop": "DEVELOP", "h_develop_s": "REPL, editor e strumenti di build",
+  "d_repl": "Python REPL", "d_repl_s": "Console interattiva",
+  "d_editor": "VOID EDIT", "d_editor_s": "Apri e modifica file di testo",
+  "d_builder": "Build tools", "d_builder_s": "Strumenti e pacchetti di sviluppo",
+  "h_community": "COMMUNITY", "h_community_s": "Forum, wiki e condivisione",
+  "c_forum": "Forum muOS", "c_forum_s": "Apri community.muos.dev",
+  "c_wiki": "Wiki muOS", "c_wiki_s": "Documentazione ufficiale",
+  "c_share": "Condivisione", "c_share_s": "Cartella condivisa",
+  "h_outerdesk": "OUTERDESK", "h_outerdesk_s": "Applicazioni standalone e strumenti esterni",
+  "o_apps": "Applicazioni", "o_apps_s": "Catalogo delle app esterne",
+  "o_voidcast": "VoidCast IPTV", "o_voidcast_s": "Client IPTV portatile",
+  "o_bgm": "BGM Normalizer", "o_bgm_s": "Normalizza e converti la musica",
+  "o_filegd": "File-GD X", "o_filegd_s": "File manager a doppio pannello",
   "f_inst": "Void Installer", "f_inst_s": "install e rimuovi (L1: tab)",
   "f_auto": "Avvio al boot", "f_auto_s": "app che partono col desktop",
   "f_upd": "Update Environments", "f_upd_s": "apt update + upgrade",
@@ -1860,6 +1898,23 @@ TR = {
   "h_info": "INFO & ABOUT", "h_info_s": "project, manual, quick guide",
   "h_set": "SETTINGS", "h_set_s": "look, audio, app language",
   "h_exit": "END NODE", "h_exit_s": "back to muOS",
+  "h_games": "GAMES", "h_games_s": "PortMaster, native games and collections",
+  "g_portmaster": "PortMaster", "g_portmaster_s": "Launch PortMaster when installed",
+  "g_native": "Native games", "g_native_s": "Open the games directory",
+  "g_collections": "Collections", "g_collections_s": "Curated game collections",
+  "h_develop": "DEVELOP", "h_develop_s": "REPL, editor and build tools",
+  "d_repl": "Python REPL", "d_repl_s": "Interactive Python console",
+  "d_editor": "VOID EDIT", "d_editor_s": "Open and edit text files",
+  "d_builder": "Build tools", "d_builder_s": "Development tools and packages",
+  "h_community": "COMMUNITY", "h_community_s": "Forums, wiki and sharing",
+  "c_forum": "muOS Forum", "c_forum_s": "Open community.muos.dev",
+  "c_wiki": "muOS Wiki", "c_wiki_s": "Official documentation",
+  "c_share": "Shared files", "c_share_s": "Open the shared folder",
+  "h_outerdesk": "OUTERDESK", "h_outerdesk_s": "Standalone apps and external tools",
+  "o_apps": "Applications", "o_apps_s": "External app catalogue",
+  "o_voidcast": "VoidCast IPTV", "o_voidcast_s": "Portable IPTV client",
+  "o_bgm": "BGM Normalizer", "o_bgm_s": "Normalize and convert music",
+  "o_filegd": "File-GD X", "o_filegd_s": "Dual-pane file manager",
   "f_inst": "Void Installer", "f_inst_s": "install & remove (L1: tab)",
   "f_auto": "Startup apps", "f_auto_s": "apps that boot with the desktop",
   "f_upd": "Update Environments", "f_upd_s": "apt update + upgrade",
@@ -2630,6 +2685,7 @@ class App(object):
     def rebuild_menu(self):
         xfce_ok = os.path.exists(os.path.join(DATA, ".xfce_ready"))
         t = self.t
+        it = (self.lang == "it")
         self.menu = [
             (t("sess"), t("sess_s")),
             (t("mapps"), t("mapps_s")),
@@ -2641,10 +2697,24 @@ class App(object):
             (t("h_set"), t("h_set_s")),
             (t("h_info"), t("h_info_s")),
             (t("h_exit"), t("h_exit_s")),
+            ("GIOCHI" if it else "GAMES",
+             "Giochi nativi, PortMaster e raccolte" if it
+             else "Native games, PortMaster and collections"),
+            ("SVILUPPO" if it else "DEVELOP",
+             "Terminale, editor e strumenti di sviluppo" if it
+             else "Terminal, editor and development tools"),
+            ("COMMUNITY",
+             "Forum, wiki e condivisione" if it
+             else "Forums, wiki and sharing"),
+            ("OUTERDESK",
+             "Applicazioni e ambienti esterni" if it
+             else "External applications and environments"),
         ]
-        self.menu_icons = ["start", "window", "speaker", "forge",
-                           "toolbox", "uplink", "workshop", "gear",
-                           "book", "power"]
+        self.menu_icons = [
+            "start", "window", "speaker", "forge", "toolbox", "uplink",
+            "workshop", "gear", "book", "power", "games", "develop",
+            "community", "outerdesk",
+        ]
 
     # ---------------------------------------------------- stile SPDW/BLAME!
 
@@ -3471,6 +3541,29 @@ class App(object):
                 return
             self.scroll = 0
             self.push("info")
+        elif hub == "outerdesk":
+            self.launch_external_tool(key)
+        elif hub in ("games", "develop", "community"):
+            from desk.hubs import GamesHub, DevelopHub, CommunityHub
+            if not hasattr(self, "_extra_hub_modules"):
+                self._extra_hub_modules = {
+                    "games": GamesHub(self),
+                    "develop": DevelopHub(self),
+                    "community": CommunityHub(self),
+                }
+            handler = getattr(self._extra_hub_modules[hub], key, None)
+            if not callable(handler):
+                self.notify("Hub action unavailable", "%s/%s" % (hub, key),
+                            "warning")
+                return
+            try:
+                handler()
+            except Exception as exc:
+                sys.stderr.write(
+                    "[HUB] %s/%s failed: %s\\n" %
+                    (hub, key, str(exc)[:180])
+                )
+                self.notify("Hub action failed", str(exc)[:80], "warning")
 
 
 # --- [J4] CHD Batch Converter // HUB: WORKSHOP ---
@@ -6358,88 +6451,125 @@ class App(object):
 
 # --- [R2] CRT Off Animation // HUB: END SESSION ---
     def notify(self, title, body="", kind="standard"):
-        """Show a toast notification. Recovered minimal body."""
+        """Queue a visible toast and keep a bounded diagnostic history."""
+        if kind not in NOTIF_KINDS:
+            kind = "standard"
+        note = {
+            "title": str(title)[:60],
+            "body": str(body)[:90],
+            "kind": kind,
+            "ts": time.time(),
+        }
+        if not hasattr(self, "notif_queue"):
+            self.notif_queue = []
+        self.notif_queue.append(note)
+        if not hasattr(self, "notif_unread"):
+            self.notif_unread = 0
+        self.notif_unread += 1
         try:
             if not hasattr(self, "_notifs_log"):
                 self._notifs_log = []
-            self._notifs_log.append({
-                "title": title,
-                "body": body,
-                "kind": kind,
-                "ts": time.time(),
-            })
-            if len(self._notifs_log) > 50:
-                self._notifs_log = self._notifs_log[-50:]
+            self._notifs_log.append(note)
+            self._notifs_log = self._notifs_log[-50:]
+            history = self.cfg.setdefault("notification_history", [])
+            history.append(note)
+            del history[:-60]
+            save_cfg(self.cfg)
         except Exception:
             pass
 
     def launch_external_tool(self, tool_id):
-        """Launch an external tool by id from external/tools.json."""
-        import json as _json, subprocess, os as _os
-        tools_path = os.path.join(APP_DIR, "external", "tools.json")
+        """Launch a registered external tool using its declared launcher type."""
+        import json as _json
+        import os as _os
+        import shutil as _shutil
+        import subprocess as _subprocess
+        from desk.hubs import HubMixin
+
+        tools_path = _os.path.join(APP_DIR, "external", "tools.json")
         try:
-            with open(tools_path) as f:
-                tools = _json.load(f).get("tools", [])
-        except Exception:
-            self.notify("External tools registry missing", "warning")
+            with open(tools_path, encoding="utf-8") as stream:
+                tools = _json.load(stream).get("tools", [])
+        except Exception as exc:
+            self.notify("External tools registry missing", str(exc)[:80],
+                        "warning")
             return
-        tool = None
-        for t in tools:
-            if t.get("id") == tool_id:
-                tool = t; break
+
+        tool = next((item for item in tools if item.get("id") == tool_id), None)
         if not tool:
-            self.notify(f"Unknown tool: {tool_id}", "warning")
+            self.notify("Unknown external tool", str(tool_id), "warning")
             return
+
         base = APP_DIR
-        path = tool.get("path", "")
-        if path.startswith("../"):
-            base = os.path.dirname(APP_DIR)
-            path = path[3:]
-        full = os.path.join(base, path)
-        if not os.path.exists(full):
-            self.notify(f"Not installed: {tool.get('name', tool_id)}", "warning")
+        relative_path = tool.get("path", "")
+        if relative_path.startswith("../"):
+            base = _os.path.dirname(APP_DIR)
+            relative_path = relative_path[3:]
+        full_path = _os.path.abspath(_os.path.join(base, relative_path or "."))
+        if not _os.path.exists(full_path):
+            self.notify("Tool not installed", tool.get("name", tool_id),
+                        "warning")
             return
+
+        launcher_type = tool.get("launcher_type", "sh")
         launcher = tool.get("launcher", "")
-        if launcher:
-            lb = os.path.dirname(base) if launcher.startswith("../") else base
-            launcher_abs = os.path.join(lb, launcher.lstrip("../") if launcher.startswith("../") else launcher)
-            if not os.path.isfile(launcher_abs):
-                self.notify(f"Launcher missing: {launcher_abs}", "warning")
-                return
-            try:
-                subprocess.Popen(["sh", launcher_abs],
-                                 cwd=os.path.dirname(launcher_abs),
-                                 start_new_session=True)
-                self.notify(f"Launching {tool.get('name', tool_id)}...")
-            except Exception as e:
-                self.notify(f"Launch failed: {e}", "warning")
-        else:
-            # LÖVE engine: try love
-            love_bin = os.path.join(APP_DIR, "lib", "love")
-            if not os.path.isfile(love_bin):
-                import shutil
-                love_bin = shutil.which("love")
+        clean_env = HubMixin.external_env(self)
+        command = None
+        cwd = APP_DIR
+
+        launch_env = clean_env
+        if launcher_type == "love":
+            love_bin = _os.path.join(APP_DIR, "lib", "love")
+            if not _os.path.isfile(love_bin):
+                love_bin = _shutil.which("love")
             if not love_bin:
-                self.notify("LÖVE binary not found", "warning")
+                self.notify("LÖVE binary not found", tool.get("name", tool_id),
+                            "warning")
                 return
-            try:
-                subprocess.Popen([love_bin, full], start_new_session=True)
-                self.notify(f"Launching {tool.get('name', tool_id)}...")
-            except Exception as e:
-                self.notify(f"Launch failed: {e}", "warning")
-        """Mette in coda una notifica cyberpunk. Richiamabile da
-        qualunque punto dell'app: messaggi dal Basestation, eventi
-        interni (screenshot inviata, aggiornamento completed...)."""
-        if kind not in NOTIF_KINDS:
-            kind = "standard"
-        note = {"title": str(title)[:60], "body": str(body)[:90],
-                "kind": kind, "ts": time.time()}
-        self.notif_queue.append(note)
-        history = self.cfg.setdefault("notification_history", [])
-        history.append(note)
-        del history[:-60]
-        self.notif_unread += 1
-        save_cfg(self.cfg)
+            love_paths = [_os.path.join(APP_DIR, "lib")]
+            if clean_env.get("LD_LIBRARY_PATH"):
+                love_paths.append(clean_env["LD_LIBRARY_PATH"])
+            launch_env = clean_env.copy()
+            launch_env["LD_LIBRARY_PATH"] = _os.pathsep.join(love_paths)
+            command = [love_bin, full_path]
+        elif launcher_type == "portable-voidcast":
+            launch_base = (_os.path.dirname(APP_DIR)
+                           if launcher.startswith("../") else APP_DIR)
+            launch_path = launcher[3:] if launcher.startswith("../") else launcher
+            launch_target = _os.path.abspath(
+                _os.path.join(launch_base, launch_path)
+            )
+            if _os.path.isdir(launch_target):
+                launch_target = _os.path.join(launch_target, "mux_launch.sh")
+            if not _os.path.isfile(launch_target):
+                self.notify("Tool launcher missing", launch_target, "warning")
+                return
+            command = ["sh", launch_target]
+            cwd = _os.path.dirname(launch_target)
+        elif launcher_type == "sh":
+            launch_target = _os.path.abspath(_os.path.join(APP_DIR, launcher))
+            if not _os.path.isfile(launch_target):
+                self.notify("Tool launcher missing", launch_target, "warning")
+                return
+            command = ["sh", launch_target]
+            cwd = _os.path.dirname(launch_target)
+        else:
+            self.notify("Unsupported launcher type", launcher_type, "warning")
+            return
+
+        try:
+            self.handoff(
+                "AVVIO %s..." % tool.get("name", tool_id)
+                if self.lang == "it"
+                else "LAUNCHING %s..." % tool.get("name", tool_id)
+            )
+            _subprocess.Popen(
+                command, cwd=cwd, env=launch_env, start_new_session=True
+            )
+            self.exit_code = 0
+            self.running = False
+        except Exception as exc:
+            self.notify("Launch failed", str(exc)[:80], "warning")
 
     def _media_panel_toggle(self):
         if self.media_panel_phase is None:
@@ -11816,6 +11946,28 @@ class App(object):
                 positions[idx] = (sx, sy, depth)
         sun_sx, sun_sy = self._nexus_to_screen(0.0, 0.0, sel_wx, sel_wy,
                                                zoom)
+        # The Tree of Life is a decorative overlay; orbital navigation and
+        # routes remain authoritative. Keep it fail-open on device runtimes.
+        try:
+            tree_positions = {0: (sun_sx, sun_sy)}
+            tree_positions.update({
+                idx: (item[0], item[1]) for idx, item in positions.items()
+            })
+            disabled_nodes = {
+                idx for idx, state in self.qwasar_nexus_states.items()
+                if state.get("enabled") is False
+            }
+            draw_life_tree(
+                self.surface, tree_positions, NEXUS_NODE_COLOR, self.sel,
+                t_now, disabled_nodes=disabled_nodes,
+            )
+        except Exception as exc:
+            if not getattr(self, "_nexus_tree_error_logged", False):
+                sys.stderr.write(
+                    "[NEXUS] Tree overlay disabled after render error: %s\n"
+                    % str(exc)[:180]
+                )
+                self._nexus_tree_error_logged = True
         order = sorted(positions.items(), key=lambda kv: kv[1][2])
         for idx, (sx, sy, depth) in order:
             sel = (idx == self.sel)
@@ -17178,6 +17330,15 @@ class App(object):
         elif i == 9:
             self.shutdown_sel = 0
             self.push("shutdownmenu", shape=shape)
+        elif i in (10, 11, 12, 13):
+            hub = {
+                10: "games",
+                11: "develop",
+                12: "community",
+                13: "outerdesk",
+            }[i]
+            self.hub_sel = 0
+            self.push("hub:" + hub, shape=shape)
 
     # -------------------------------------------------------------- render
     def render_home_hud(self):

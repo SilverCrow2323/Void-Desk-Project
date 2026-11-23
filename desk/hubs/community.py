@@ -25,7 +25,10 @@ class CommunityHub(HubMixin):
                 break
         if browser:
             try:
-                __import__("subprocess").Popen([browser, url])
+                __import__("subprocess").Popen(
+                    [browser, url], env=self.external_env(),
+                    start_new_session=True,
+                )
                 app.notify("Forum", "aperto nel browser", "success")
             except Exception as e:
                 app.notify("Forum", str(e)[:60], "warning")
@@ -52,7 +55,10 @@ class CommunityHub(HubMixin):
                 break
         if browser:
             try:
-                __import__("subprocess").Popen([browser, url])
+                __import__("subprocess").Popen(
+                    [browser, url], env=self.external_env(),
+                    start_new_session=True,
+                )
                 app.notify("Wiki", "aperta nel browser", "success")
             except Exception as e:
                 app.notify("Wiki", str(e)[:60], "warning")

@@ -30,7 +30,14 @@ class GamesHub(HubMixin):
         if not pm:
             app.notify("PortMaster", "not found nel sistema", "warning")
             return
+        import subprocess
         app.handoff("AVVIO PORTMASTER..." if app.lang == "it" else "STARTING PORTMASTER...")
+        subprocess.Popen(
+            ["/bin/sh", pm],
+            cwd=os.path.dirname(pm),
+            env=self.external_env(),
+            start_new_session=True,
+        )
         app.exit_code = 0
         app.running = False
 
@@ -43,9 +50,9 @@ class GamesHub(HubMixin):
             "/mnt/mmc/ROMS/PORTS",
             "/mnt/sdcard/ROMS/PORTS",
         ]
-        start_path = "/mnt/mmc/MUOS/application"
-        if os.path.isdir(start_path):
-            app.fm_open(start_path=start_path)
+        start_path = next((path for path in game_roots
+                           if os.path.isdir(path)), None)
+        app.fm_open(start_path=start_path)
 
     def collections(self):
         """Collezioni di giochi (raccolte tematiche)."""

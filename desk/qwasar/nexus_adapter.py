@@ -1,9 +1,7 @@
-"""Profile-to-legacy-node adapter for the active Pygame NEXUS renderer.
+"""Profile-to-node adapter for the 14-destination Pygame NEXUS renderer.
 
-The active desk.main App still uses the ten-node layout (IDs 0-9). Keep this
-mapping aligned with desk/main.py, not the separate/newer const.py layout.
-QWASAR workspace IDs control only the mapped nodes; legacy destinations stay
-in their established orbit and slot.
+QWASAR controls the eight named workspaces. Six established legacy
+destinations retain their numeric IDs and orbit slots.
 """
 from __future__ import annotations
 
@@ -11,13 +9,11 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 
-# Exact active Pygame layout from desk/main.py:
-# inner: START SESSION; mid: FORGE, UPLINK, MEDIA, WORKSHOP;
-# outer: RT:TOOLBOX, MUOS APPS, SETTINGS, INFO; far: END NODE.
+# Four live orbits; node IDs match desk.const and App.activate().
 BASE_RINGS: tuple[tuple[int, ...], ...] = (
     (0,),
-    (3, 5, 2, 6),
-    (4, 1, 7, 8),
+    (3, 5, 2, 6, 10, 11),
+    (4, 1, 7, 8, 12, 13),
     (9,),
 )
 
@@ -34,11 +30,14 @@ WORKSPACE_BY_NODE: dict[int, str] = {
 
 PROTECTED_WORKSPACES = frozenset({"start-session", "end-node"})
 
-# Legacy-only nodes keep stable positions between profile-controlled entries.
-# The numeric values intentionally leave room for the QWASAR order indices.
+# Legacy-only nodes keep stable relative slots when profile workspaces move.
 LEGACY_SORT_ORDER: dict[int, float] = {
-    6: 3.5,  # WORKSHOP, mid orbit
-    1: 4.5,  # MUOS APPS, outer orbit
+    6: 3.5,   # WORKSHOP, mid orbit
+    10: 4.5,  # GAMES, mid orbit
+    11: 5.5,  # DEVELOP, mid orbit
+    1: 4.5,   # MUOS APPS, outer orbit
+    12: 5.5,  # COMMUNITY, outer orbit
+    13: 6.5,  # OUTERDESK, outer orbit
 }
 
 
