@@ -19,7 +19,7 @@
 | PR #100 — QWASAR NEXUS adapter | Merged; exact-head CI #969 green | Integrated |
 | PR #101 — H700 direct framebuffer and offline Pygame bootstrap | Merged; exact-head CI #974 green; main CI #975 green | Integrated; physical H700 validation pending |
 | PR #102 — 14-node NEXUS, hub routes, Tree of Life, external launcher and notification repairs | Merged as commit 715e349; exact-head CI #989 green | Integrated |
-| Mainline CI after PR #102 | Run #990: Python checks and package build passed; LÖVE/Rt:Tailscale-M job was still running at this snapshot | Final mainline workflow pending |
+| Mainline CI after PR #102 | Run #990 on merge commit 715e349 passed all three jobs | Green |
 | Latest public package | v10.2.0, published 11 Aug 2026 | No v10.5.4 release asset exists |
 
 ### Candidate functionality now on main
@@ -77,7 +77,7 @@ Do not claim secure pairing, central authentication, SPDW Hub or remote control 
 - [x] PR #102 exact-head CI: 305 Python tests passed, 3 subtests passed; integrity audit, Pygame captures and shell checks passed.
 - [x] PR #102 exact-head LÖVE/Rt:Tailscale-M integration and QEMU job passed.
 - [x] PR #102 exact-head .muxapp and .deb package builds passed, with checksums.
-- [ ] Mainline CI #990 must complete successfully on merge commit 715e349.
+- [x] Mainline CI #990 completed successfully on merge commit 715e349.
 - [ ] Review the generated Pygame and LÖVE captures; automated capture is not manual visual approval.
 
 ### G2 — Packaging
@@ -119,6 +119,6 @@ Do not claim secure pairing, central authentication, SPDW Hub or remote control 
 
 **NO-GO for public v10.5.4 release.**
 
-The Pygame candidate has been integrated and its exact-head automated CI is green. The remaining blockers are not code-merge blockers: mainline CI #990 must finish, the generated captures need manual review, the H700 framebuffer/NEXUS/external-app path needs physical testing, RG35XXSP issues #1/#2/#42 remain open, and BaseStation is explicitly outside the release scope until issue #78 is satisfied.
+The Pygame candidate has been integrated and both exact-head PR CI (#989) and post-merge mainline CI (#990) are green. The remaining blockers are not code-merge blockers: generated captures need manual review, the H700 framebuffer/NEXUS/external-app path needs physical testing, RG35XXSP issues #1/#2/#42 remain open, and BaseStation is explicitly outside the release scope until issue #78 is satisfied.
 
-The next safe sequence is: finish mainline CI, manually inspect the artifacts, run the physical H700 smoke test with rollback available, resolve or explicitly scope the open device issues, then build the final release candidate. **Do not create a v10.5.4 tag before those gates close.**
+The next safe sequence is: manually inspect the artifacts, run the physical H700 smoke test with rollback available, resolve or explicitly scope the open device issues, then build the final release candidate. **Do not create a v10.5.4 tag before those gates close.**
