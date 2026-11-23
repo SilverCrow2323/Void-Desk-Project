@@ -146,3 +146,16 @@ def test_muos_display_fails_if_both_verified_framebuffer_paths_fail():
         assert "SDL fallback" in str(exc)
     else:
         raise AssertionError("expected both framebuffer paths to fail")
+
+
+def test_muos_display_prefers_direct_framebuffer_when_available():
+    from desk.muos_video import init_muos_display
+
+    pygame = _FakePygame()
+    fb = _FakeFramebuffer(available=True)
+
+    surface, mode = init_muos_display(pygame, fb, (640, 480))
+
+    assert mode == "direct"
+    assert surface is pygame.created
+    assert fb.attached is surface

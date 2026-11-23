@@ -19,7 +19,8 @@ def test_muos_launcher_enables_direct_framebuffer_and_keeps_pygame_diagnostics()
 def test_pygame_direct_framebuffer_path_is_used_only_on_muos():
     main = (ROOT / "desk" / "main.py").read_text(encoding="utf-8")
     assert 'os.environ.get("VOIDDESK_DIRECT_FB") != "1"' in main
-    assert "init_muos_surface(pygame, fbdisplay, (W, H))" in main
+    assert "init_muos_display(" in main
+    assert "pygame, fbdisplay, (W, H)" in main
     assert "poll_muos_events(" in main
 
 
