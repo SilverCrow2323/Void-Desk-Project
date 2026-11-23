@@ -58,14 +58,19 @@ def test_outerdesk_catalogue_uses_supported_info_state(tmp_path):
 def test_external_process_environment_does_not_leak_pygame_runtime(monkeypatch):
     from desk.hubs import HubMixin
 
-    monkeypatch.setenv("LD_LIBRARY_PATH", "/voiddesk/runtime/pygame.libs")
+    root = Path(__file__).resolve().parents[1]
+    monkeypatch.setenv(
+        "LD_LIBRARY_PATH",
+        str(root / "runtime" / "pygame.libs") + ":" +
+        str(root / "lib") + ":/system/lib",
+    )
     monkeypatch.setenv("PYTHONPATH", "/voiddesk:/voiddesk/runtime")
     monkeypatch.setenv("VOIDDESK_DIRECT_FB", "1")
     monkeypatch.setenv("VOIDCAST_FB_DEV", "/dev/fb0")
 
     env = HubMixin().external_env()
 
-    assert "LD_LIBRARY_PATH" not in env
+    assert env["LD_LIBRARY_PATH"] == "/system/lib"
     assert "PYTHONPATH" not in env
     assert "VOIDDESK_DIRECT_FB" not in env
     assert "VOIDCAST_FB_DEV" not in env
@@ -94,7 +99,12 @@ def test_portmaster_launch_uses_clean_environment_and_detached_session(
         return object()
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    monkeypatch.setenv("LD_LIBRARY_PATH", "/voiddesk/runtime/pygame.libs")
+    root = Path(__file__).resolve().parents[1]
+    monkeypatch.setenv(
+        "LD_LIBRARY_PATH",
+        str(root / "runtime" / "pygame.libs") + ":" +
+        str(root / "lib") + ":/system/lib",
+    )
     monkeypatch.setenv("PYTHONPATH", "/voiddesk:/voiddesk/runtime")
     monkeypatch.setenv("VOIDDESK_DIRECT_FB", "1")
 
@@ -104,7 +114,7 @@ def test_portmaster_launch_uses_clean_environment_and_detached_session(
         "/bin/sh", "/mnt/mmc/MUOS/PortMaster/PortMaster.sh"
     ]
     assert launched["kwargs"]["start_new_session"] is True
-    assert "LD_LIBRARY_PATH" not in launched["kwargs"]["env"]
+    assert launched["kwargs"]["env"]["LD_LIBRARY_PATH"] == "/system/lib"
     assert "PYTHONPATH" not in launched["kwargs"]["env"]
     assert "VOIDDESK_DIRECT_FB" not in launched["kwargs"]["env"]
     assert app.running is False
@@ -124,7 +134,12 @@ def test_community_browser_launch_uses_clean_environment(monkeypatch, tmp_path):
         subprocess, "Popen",
         lambda args, **kwargs: launched.update(args=args, kwargs=kwargs),
     )
-    monkeypatch.setenv("LD_LIBRARY_PATH", "/voiddesk/runtime/pygame.libs")
+    root = Path(__file__).resolve().parents[1]
+    monkeypatch.setenv(
+        "LD_LIBRARY_PATH",
+        str(root / "runtime" / "pygame.libs") + ":" +
+        str(root / "lib") + ":/system/lib",
+    )
     monkeypatch.setenv("VOIDDESK_DIRECT_FB", "1")
 
     CommunityHub(app).forum()

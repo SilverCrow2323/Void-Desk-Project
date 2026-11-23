@@ -15,10 +15,24 @@ class HubMixin:
         """
         import os
         env = os.environ.copy()
+        app_root = os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__)
+        )))
+        voiddesk_libs = {
+            os.path.abspath(os.path.join(app_root, "lib")),
+            os.path.abspath(os.path.join(app_root, "runtime", "pygame.libs")),
+        }
+        ld_paths = [
+            path for path in env.get("LD_LIBRARY_PATH", "").split(os.pathsep)
+            if path and os.path.abspath(path) not in voiddesk_libs
+        ]
+        if ld_paths:
+            env["LD_LIBRARY_PATH"] = os.pathsep.join(ld_paths)
+        else:
+            env.pop("LD_LIBRARY_PATH", None)
         for key in (
-            "LD_LIBRARY_PATH", "PYTHONPATH", "PYGAME_HIDE_SUPPORT_PROMPT",
-            "VOIDDESK_DIRECT_FB", "VOIDCAST_FB_DEV", "VOIDCAST_FB_SYSFS",
-            "VOIDCAST_FB",
+            "PYTHONPATH", "PYGAME_HIDE_SUPPORT_PROMPT", "VOIDDESK_DIRECT_FB",
+            "VOIDCAST_FB_DEV", "VOIDCAST_FB_SYSFS", "VOIDCAST_FB",
         ):
             env.pop(key, None)
         return env
