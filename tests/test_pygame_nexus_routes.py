@@ -34,5 +34,9 @@ def test_pygame_nexus_legacy_destinations_dispatch_to_existing_hubs():
         assert f"from desk.hubs.{module} import" in hubs
     for hub in ("games", "develop", "community", "outerdesk"):
         assert f'"{hub}": (' in main
-    assert 'elif hub in ("games", "develop", "community", "outerdesk"):' in main
+    assert 'elif hub == "outerdesk":' in main
+    assert 'self.launch_external_tool(key)' in main
+    assert 'elif hub in ("games", "develop", "community"):' in main
     assert 'self._extra_hub_modules[hub]' in main
+    for tool_id in ("voidcast", "bgm_normalizer", "file_gd_x"):
+        assert f'("{tool_id}",' in main
