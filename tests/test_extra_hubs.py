@@ -228,6 +228,7 @@ def test_external_tool_registry_launches_each_declared_runtime_type(
     app = main_module.App.__new__(main_module.App)
     app.notify = lambda *args: None
     app.handoff = lambda label: None
+    app.lang = "en"
     app.running = True
     app.exit_code = None
 
