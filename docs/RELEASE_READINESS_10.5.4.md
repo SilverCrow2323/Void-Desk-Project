@@ -1,121 +1,124 @@
-# Void Desk 10.5.4 — release consolidation gate
+# Void Desk 10.5.4-NEXUS — release readiness
 
-> Status snapshot: 22 November 2026, updated after PR #84 integration. This is an engineering gate, not a release announcement.
+> Status snapshot: 23 November 2026, after PRs #100, #101 and #102 were merged. This is an engineering gate, **not a release announcement**.
 >
-> The latest published handheld package remains v10.2.0. The v10.5.4-NEXUS line is still a candidate. v12 remains a blueprint, not an installable release.
+> The latest published handheld package remains **v10.2.0** (11 August 2026). The v10.5.4-NEXUS candidate is integrated on main, but it is not tagged or published. v12 remains a blueprint.
 
 ## Release policy
 
-- Keep `main` protected from speculative integration. Consolidate on `release/consolidation-2026-11b` and merge through reviewed pull requests.
-- Preserve the current Pygame reference frontend. LÖVE remains experimental until its declared release scope passes the same user-journey and hardware gates.
-- A green source CI is necessary but does not certify muOS/H700 hardware.
-- Do not publish a release tag or binary until the packaging, installation, rollback and physical-device gates below are evidenced.
-- Do not advertise BaseStation as a completed SPDW Hub or secure paired remote-control product.
+- Pygame is the reference handheld frontend. LÖVE remains experimental and is not feature-equivalent.
+- A green source CI is necessary, but it does not certify muOS/H700 hardware.
+- Do not publish a release tag or binary until packaging, install/rollback and physical-device gates are evidenced.
+- Do not advertise BaseStation as a completed SPDW Hub, secure paired service or remote-control product.
+- The v10.5.4 release scope is the Pygame handheld path. The LÖVE feature stack remains separate and experimental.
 
-## Baseline verified on 22 November 2026
+## Integrated mainline baseline
 
-| Area | Evidence | Release interpretation |
+| Change | Evidence | Status |
 |---|---|---|
-| Main CI | CI run 955 on `dd179668` completed successfully on 22 Nov, immediately before the documentation-only PR #84 merge | Mainline source checks were green at the audited baseline; the merge itself was validated by the three-job PR rerun |
-| Documentation/UI maintenance | PR #84 merged as `a4561ce`; rerun CI 44388775150 completed with all 3 jobs successful | Portal links and BaseStation backdrop dismissal are now on `main`; no Pages deployment is implied |
-| Launcher | PR #94 merged; Pygame is the validated default engine | Keep Pygame as the reference path |
-| SSH host-key policy | PR #95 merged; main CI run 955 passed | Known-host verification is present on the audited SSH surfaces |
-| BaseStation containment | PR #79 merged; loopback-only listener, fail-closed auth and route capabilities | Containment only; not full pairing/product integration |
-| BaseStation SSH follow-up | PR #95 merged; AndroidStation rejects unknown host keys | Pairing UI and known-host provisioning remain incomplete |
-| Latest public package | v10.2.0, published 11 Aug 2026 | No 10.5.4 release artifact exists yet |
+| PR #100 — QWASAR NEXUS adapter | Merged; exact-head CI #969 green | Integrated |
+| PR #101 — H700 direct framebuffer and offline Pygame bootstrap | Merged; exact-head CI #974 green; main CI #975 green | Integrated; physical H700 validation pending |
+| PR #102 — 14-node NEXUS, hub routes, Tree of Life, external launcher and notification repairs | Merged as commit 715e349; exact-head CI #989 green | Integrated |
+| Mainline CI after PR #102 | Run #990: Python checks and package build passed; LÖVE/Rt:Tailscale-M job was still running at this snapshot | Final mainline workflow pending |
+| Latest public package | v10.2.0, published 11 Aug 2026 | No v10.5.4 release asset exists |
 
-## Open integration stack
+### Candidate functionality now on main
 
-The following work is not an independent set of merge-ready PRs. Respect the stacked bases and rebase/retest each layer against current `main`.
+- Pygame remains the default/reference frontend.
+- NEXUS exposes 14 destinations: START SESSION, MUOS APPS, MEDIA VAULT, THE FORGE, RT:TOOLBOX, UPLINK, WORKSHOP, SETTINGS, INFO, END NODE, GAMES, DEVELOP, COMMUNITY and OUTERDESK.
+- QWASAR profile composition controls the eight mapped workspaces. Six legacy destinations retain stable IDs; START SESSION and END NODE are protected recovery anchors.
+- The Tree of Life is drawn behind orbital nodes. Hidden nodes have no live position; disabled nodes remain visible but are skipped by navigation. A drawing error is logged once and cannot break the main renderer.
+- GAMES, DEVELOP and COMMUNITY dispatch to existing hub modules. OUTERDESK reads the external tool registry and supports its declared shell, LÖVE and portable-VoidCast launcher types.
+- External programs are launched in detached sessions with Void Desk's Pygame/SDL library paths, Python paths and direct-framebuffer flags removed. Host library paths are preserved, and the LÖVE launcher receives only its required application library path.
+- Notification delivery is restored to the visible queue and bounded history.
+- muOS H700 launch prefers direct framebuffer presentation, verifies an initial write, and retains a verified SDL/framebuffer fallback.
+- Pygame runtime bootstrap uses bundled CPython 3.11/aarch64 archives first, with safe extraction and ABI checks; the network fallback uses verified TLS.
 
-### Pygame / NEXUS stack
+## Superseded and deferred work
 
-1. PR #66 — QWASAR profile state in Pygame NEXUS (draft; base `main`).
-2. PR #86 — Tree of Life planetarium (stacked on #66).
-3. PR #88 — NEXUS renderer fail-safe (stacked on #86).
-4. PR #89 — shared operation-feedback policy (stacked on #88).
-5. PR #90 — Start Session hub (stacked on #89).
-6. PR #91 — THE FORGE (stacked on #90; its recorded checks passed on 19 Nov).
-7. PR #92 — UPLINK (stacked on #91; its recorded checks passed on 19 Nov, but GitHub currently reports the PR as not mergeable).
+- PR #66, #86 and #88 were closed as superseded by the selective, tested integrations in #100–#102. The old fixed input mapping from #66 was intentionally not copied because current main already has firmware-aware Andromeda/non-Andromeda profiles.
+- PR #89 (shared operation-feedback policy) remains separate and is not part of the current release candidate.
+- LÖVE PRs #73, #87, #90, #91 and #92 remain experimental work. Their historical checks are not evidence of feature parity or hardware qualification; PR #92 must not be merged while GitHub reports it unmergeable.
+- No feature from the LÖVE stack is promoted to the default handheld path by this consolidation.
 
-### LÖVE stack
+## Known release blockers and boundaries
 
-1. PR #73 — LÖVE frontend overhaul (draft; recorded checks passed on 15 Nov).
-2. PR #87 — Tree of Life parity (stacked on #73).
+### Hardware / user-reported issues
 
-Do not merge a child PR before its parent is integrated and the child has been rebased and revalidated. Do not treat the historical green checks on #73, #91 or #92 as proof against the current mainline.
-
-### Documentation branch
-
-PR #84 was marked ready and squash-merged into `main` as `a4561ce2ddbb77a00e365c8e8fe1b0f1b1b1ee78`. The rerun workflow (run 44388775150) completed successfully: `.muxapp/.deb` build, Python checks, and Lua/LÖVE/Rt:Tailscale-M integration all passed. The original APT download timeout was transient. The merge does not certify a live Pages deployment or handheld hardware.
-
-## Known release blockers
-
-### Hardware and user-reported issues
-
-- Issue #2: RG35XXSP shutdown and Bluetooth responsiveness. Source fixes exist, but physical confirmation is still required.
-- Issue #42: RG35XXSP Bluetooth responsiveness. Verify the exact model/firmware/controller combination and capture repeatable evidence.
-- Issue #1: browser launch I/O error. Reproduction details and the full error/log are still needed; do not mark it fixed without evidence.
+- [Issue #1](https://github.com/SilverCrow2323/Void-Desk-Project/issues/1): browser launch reports an I/O error on muOS. Reproduction details and the full log are still insufficient to call this fixed.
+- [Issue #2](https://github.com/SilverCrow2323/Void-Desk-Project/issues/2): RG35XXSP power-off can leave the device running after the LED extinguishes; the issue also reports NEXUS stutter.
+- [Issue #42](https://github.com/SilverCrow2323/Void-Desk-Project/issues/42): RG35XXSP Bluetooth responsiveness needs the exact physical test matrix in the issue.
+- Direct framebuffer startup, SDL fallback, 14-node navigation, external hand-off and Tree of Life frame-time/readability still require physical H700 testing. A QEMU test is not a framebuffer test on the handheld.
 
 ### BaseStation / SPDW Hub boundary
 
-Issue #78 remains open by design. Merged containment work is not the full integration. Still missing or unverified:
+[Issue #78](https://github.com/SilverCrow2323/Void-Desk-Project/issues/78) explicitly keeps BaseStation at PC-only prototype/companion status until its secure pairing gates are complete. Still missing or unverified:
 
-- installable handheld `VOID_Uplink` client;
-- explicit pairing UI and user-confirmed secret delivery;
-- authenticated LAN transport and end-to-end pairing round trip;
-- token rotation/revocation and complete per-client capability lifecycle;
-- rate limiting and full audit lifecycle;
-- installable `assets/basestation/console_app` target.
+- installable handheld VOID_Uplink client and explicit user-confirmed pairing flow;
+- random pairing secret generation, atomic owner-only persistence and non-empty fail-closed authentication;
+- authenticated LAN round trip, token rotation/revocation and per-client capability lifecycle;
+- origin policy, request validation, rate limiting and append-only audit coverage;
+- installable assets/basestation/console_app target;
+- known-host SSH/SFTP verification across the full pairing flow.
 
-Until those are implemented and tested, label BaseStation as a PC-only prototype/companion. Keep it out of the release's completed-feature claims.
+Do not claim secure pairing, central authentication, SPDW Hub or remote control as completed. BaseStation is not a release feature in this candidate.
 
 ## Required release gates
 
 ### G0 — Integration hygiene
-- [ ] Rebase each active PR on current `main` in dependency order.
-- [ ] Resolve conflicts explicitly; no force-push over unrelated work.
-- [ ] Review changed files and security-sensitive operations.
-- [ ] Re-run CI on each exact final PR head.
+
+- [x] Selectively integrate the Pygame NEXUS, framebuffer and bootstrap work on current main.
+- [x] Preserve the firmware-aware Andromeda/non-Andromeda input mapping.
+- [x] Close the superseded Pygame stack branches #66, #86 and #88 with explicit replacement references.
+- [ ] Decide whether PR #89 is deferred or integrated in a later scope; do not silently include it.
 
 ### G1 — Source and automated tests
-- [ ] Python compile, lint and complete pytest suite.
-- [ ] Lua/LÖVE syntax, scene and bridge contract tests.
-- [ ] Shell syntax and launcher/lifecycle tests.
-- [ ] Build validator and package layout tests.
-- [ ] NEXUS route/action audit: every visible control routes to a real action or is visibly disabled with a reason.
-- [ ] Regression tests for all fixes included in the candidate.
+
+- [x] PR #102 exact-head CI: 305 Python tests passed, 3 subtests passed; integrity audit, Pygame captures and shell checks passed.
+- [x] PR #102 exact-head LÖVE/Rt:Tailscale-M integration and QEMU job passed.
+- [x] PR #102 exact-head .muxapp and .deb package builds passed, with checksums.
+- [ ] Mainline CI #990 must complete successfully on merge commit 715e349.
+- [ ] Review the generated Pygame and LÖVE captures; automated capture is not manual visual approval.
 
 ### G2 — Packaging
-- [ ] Build `.muxapp` and Debian `.deb` from the same candidate commit.
-- [ ] Verify exactly one top-level `Void-Desk/` package root.
-- [ ] Verify required runtime/submodule assets and executable permissions.
-- [ ] Verify no desktop virtualenv, secrets, test captures or developer-only files leak into the package.
-- [ ] Record SHA-256 checksums and archive the build logs.
+
+- [x] Build .muxapp and Debian .deb from the same PR #102 candidate commit.
+- [x] Verify Debian package metadata.
+- [x] Upload handheld/PC artifacts and checksums in CI.
+- [ ] Rebuild from final main after all documentation and release-scope changes.
+- [ ] Verify install, upgrade and rollback on the target device.
 
 ### G3 — Desktop and visual QA
-- [ ] Pygame render-state capture and manual review.
-- [ ] LÖVE scene capture and manual review for its declared experimental scope.
-- [ ] Controller navigation, focus restoration, back paths, small-screen clipping and error/empty/offline states.
-- [ ] Validate all hub routes: NEXUS, SESSION, THE FORGE, UPLINK, WORKSHOP, MUOS APPS, SETTINGS and END SESSION.
 
-### G4 — muOS/H700 physical qualification
-- [ ] Test exact muOS release + handheld model + controller GUID; do not infer compatibility from H700 alone.
+- [x] Automated Pygame home-style captures.
+- [x] Automated LÖVE scene captures for its experimental scope.
+- [ ] Manually inspect screenshots for clipping, focus, labels, contrast and Tree of Life overlap.
+- [ ] Review 14-node route coverage and external app hand-off on a desktop muOS-compatible test environment.
+
+### G4 — muOS / H700 physical qualification
+
+- [ ] Record exact handheld model, muOS build, controller GUID and package SHA-256.
 - [ ] Cold install, first launch, relaunch, update and rollback.
-- [ ] Test Pygame default path, controller input, audio, storage and clean return to muOS.
-- [ ] Test shutdown/reboot and Bluetooth responsiveness on RG35XXSP where claimed.
-- [ ] Exercise service-offline, permission-denied, timeout and cancellation paths.
-- [ ] Record device, firmware, frontend, logs and outcome for every test.
+- [ ] Confirm direct framebuffer path or verified SDL fallback; check for black screen and write errors.
+- [ ] Navigate all 14 NEXUS destinations with D-pad and confirm hidden/disabled QWASAR behaviour and protected recovery anchors.
+- [ ] Check Tree of Life frame pacing and text/node readability for at least ten minutes.
+- [ ] Test GAMES/PortMaster, DEVELOP, COMMUNITY and OUTERDESK hand-off; verify return to muOS and no stale Pygame environment leakage.
+- [ ] Verify audio, storage, clean exit, reboot and power-off.
+- [ ] Run the RG35XXSP Bluetooth/shutdown matrix separately before claiming those devices are fixed.
+- [ ] Record logs and outcomes; use the H700 smoke-test checklist.
 
 ### G5 — Release publication
-- [ ] Update CHANGELOG with only verified user-visible changes.
+
+- [ ] Update final changelog with only verified user-visible changes.
 - [ ] Align application and package version metadata.
-- [ ] Publish install/upgrade/rollback instructions and compatibility matrix.
-- [ ] Attach tested `.muxapp` and `.deb` artifacts with checksums.
+- [ ] Publish install, upgrade, rollback and compatibility instructions.
+- [ ] Attach the physically tested .muxapp and .deb artifacts with SHA-256 checksums.
 - [ ] Create annotated tag and GitHub Release only after G0–G4 pass.
 
 ## Current decision
 
-**NO-GO for public release.** The mainline CI and PR #84 rerun are green, but the feature stacks remain drafts and two major base branches are currently reported dirty against their parent (`#66`, `#73`). Hardware issues remain unverified, the full BaseStation pairing scope is explicitly incomplete, and no 10.5.4 package has been built from a single integrated candidate.
+**NO-GO for public v10.5.4 release.**
 
-The next safe execution sequence is: rebase the Pygame stack in order, run exact-head CI, integrate and retest the LÖVE branch separately, keep the documentation/portal publishing state explicit, then build and physically qualify the candidate. No release tag should be created before these gates are closed.
+The Pygame candidate has been integrated and its exact-head automated CI is green. The remaining blockers are not code-merge blockers: mainline CI #990 must finish, the generated captures need manual review, the H700 framebuffer/NEXUS/external-app path needs physical testing, RG35XXSP issues #1/#2/#42 remain open, and BaseStation is explicitly outside the release scope until issue #78 is satisfied.
+
+The next safe sequence is: finish mainline CI, manually inspect the artifacts, run the physical H700 smoke test with rollback available, resolve or explicitly scope the open device issues, then build the final release candidate. **Do not create a v10.5.4 tag before those gates close.**

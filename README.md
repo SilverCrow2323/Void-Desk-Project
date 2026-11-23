@@ -16,7 +16,7 @@
 Void Desk is a controller-first handheld environment in the wider **QWASAR-Env** ecosystem. It brings navigation, system tools, connectivity, media, diagnostics and optional desktop sessions into one interface while keeping the host firmware's native boot and recovery paths intact. The **Symbiotic Layer** is the architectural direction: integrate with the host firmware through supported interfaces while keeping boot, recovery and uninstall paths reversible. Void Desk remains an application-level integration, not a replacement firmware image today. The installed handheld application directory remains `Void-Desk/`, and the muOS launcher entry point remains `mux_launch.sh` for compatibility with existing installs.
 
 > [!IMPORTANT]
-> **This repository contains active development, not a v12 release.** The latest published handheld package is **v10.2.0** (11 August 2026). The v10.5.4-NEXUS development line remains under review; [PR #66](https://github.com/SilverCrow2323/Void-Desk-Project/pull/66) is a draft. **v12 is a product and architecture blueprint**, not an installable package.
+> **This repository contains active development, not a v12 release.** The latest published handheld package remains **v10.2.0** (11 August 2026). The v10.5.4-NEXUS candidate has been consolidated on main through [PR #100](https://github.com/SilverCrow2323/Void-Desk-Project/pull/100), [PR #101](https://github.com/SilverCrow2323/Void-Desk-Project/pull/101) and [PR #102](https://github.com/SilverCrow2323/Void-Desk-Project/pull/102), but it has **not** been published. H700/RG35XXSP physical qualification and the remaining release blockers are still open. **v12 is a product and architecture blueprint**, not an installable package.
 
 > [!NOTE]
 > **Current implementation:** Pygame is the reference handheld frontend. LÖVE is experimental and is not feature-equivalent. muOS 2606.0 Andromeda is the current packaging target; compatibility with another firmware/device pair needs its own validation.
@@ -30,9 +30,12 @@ Void Desk is a controller-first handheld environment in the wider **QWASAR-Env**
 | Publish or maintain the portal | [Field Portal publishing guide](docs/FIELD_PORTAL_PUBLISHING.md) |
 | Understand the project | [Documentation home](docs/README.md) |
 | Check release readiness | [10.5.4 consolidation gate](docs/RELEASE_READINESS_10.5.4.md) |
+| [H700 physical smoke test](docs/H700_RELEASE_SMOKE_TEST.md) |
+| [Candidate changelog](CHANGELOG.md) |
 | Quick answers and first steps | [Wiki FAQ](wiki-source/FAQ.md) · [What is Void Desk?](wiki-source/What-is-Void-Desk.md) · [First steps](wiki-source/First-steps.md) |
 | Test the desktop version on Linux | [PC testing guide](wiki-source/Desktop-PC-testing.md) · [PC bundle notes](packaging/pc/README.md) |
 | Install the latest published package | [Installation guide](wiki-source/Installation-muOS-Andromeda.md) · [Releases](https://github.com/SilverCrow2323/Void-Desk-Project/releases) |
+| Explore the current v10.5.4 candidate | [Candidate changelog](CHANGELOG.md) · [H700 physical smoke test](docs/H700_RELEASE_SMOKE_TEST.md) |
 | Explore the v12 direction | [v12 blueprint](docs/V12_BLUEPRINT.md) |
 | Check firmware and controller compatibility | [muOS compatibility matrix](docs/MUOS_FIRMWARE_COMPATIBILITY.md) |
 | Understand runtime and source layout | [Architecture](docs/ARCHITECTURE.md) |
@@ -60,6 +63,18 @@ Void Desk is the handheld client. **QWASAR-Env** is the broader ecosystem of sha
 The v12 blueprint proposes eight destinations grouped by user intent. **RT:WORKSHOP** combines the old Workshop and Toolbox responsibilities into two satellites: **SYSTEMS** and **TOOLS**. **UPLINK** owns connectivity, remote access and synchronisation. **SETTINGS** becomes the control cockpit for appearance, input, device/OS, identity and QWASAR configuration.
 
 ![Proposed NEXUS v12 information architecture](docs/assets/nexus-v12-navigation.svg)
+
+## 🪐 Current Pygame NEXUS — v10.5.4 candidate
+
+The integrated Pygame candidate exposes **14 destinations** across four orbital rings:
+
+- **Core:** START SESSION, MUOS APPS, MEDIA VAULT, THE FORGE, RT:TOOLBOX, UPLINK, WORKSHOP, SETTINGS, INFO and END NODE.
+- **Extended hubs:** GAMES, DEVELOP, COMMUNITY and OUTERDESK.
+- **QWASAR profiles:** reorder, hide or disable the eight mapped workspaces. The six legacy destinations keep stable node IDs and positions; START SESSION and END NODE remain protected recovery anchors.
+- **Tree of Life:** a decorative orbital overlay with muted disabled branches and a fail-open renderer boundary.
+- **muOS H700 path:** direct framebuffer presentation with a verified SDL/framebuffer fallback, plus offline-first bundled Pygame runtime bootstrap.
+
+These changes are merged and CI-validated, but the candidate is **not hardware-certified or publicly released**. See the [candidate changelog](CHANGELOG.md), [release gate](docs/RELEASE_READINESS_10.5.4.md) and [physical smoke-test plan](docs/H700_RELEASE_SMOKE_TEST.md).
 
 ## 🧩 Navigation icon library
 
@@ -159,6 +174,8 @@ python3 voiddesk.py --help
 | [Tool catalog](docs/TOOL_CATALOG.md) | Source-grounded feature inventory |
 | [Visual identity](docs/VISUAL_IDENTITY.md) | Product UI style, palettes and accessibility |
 | [Documentation style guide](docs/DOCUMENTATION_STYLE_GUIDE.md) | Callouts, diagrams, images and expandable content |
+| [H700 release smoke test](docs/H700_RELEASE_SMOKE_TEST.md) | Physical installation, framebuffer, NEXUS, input, external tools and rollback checklist |
+| [Candidate changelog](CHANGELOG.md) | Merged v10.5.4-NEXUS changes and explicit non-release notes |
 | [Development guide](docs/DEVELOPMENT.md) | Build, tests, screenshots and hardware validation |
 | [Visual capture workflow](docs/visual/README.md) | PNG capture, asset inventory and privacy review |
 | [Security policy](SECURITY.md) | Security reporting and safe-operation boundaries |
