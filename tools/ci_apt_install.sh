@@ -34,8 +34,9 @@ normalize_runner_mirrors() {
 
   while IFS= read -r -d '' file; do
     if grep -Eq "https?://$RUNNER_MIRROR_PATTERN/ubuntu" "$file"; then
+      # Use # as the sed delimiter because the ERE contains an alternation |.
       apt_edit_file "$file" -E \
-        "s|https?://$RUNNER_MIRROR_PATTERN/ubuntu/?|https://archive.ubuntu.com/ubuntu|g"
+        "s#https?://$RUNNER_MIRROR_PATTERN/ubuntu/?#https://archive.ubuntu.com/ubuntu#g"
       echo "Normalized runner mirror in $file."
     fi
   done < <(
