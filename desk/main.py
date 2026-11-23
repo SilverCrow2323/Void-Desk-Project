@@ -6517,6 +6517,7 @@ class App(object):
         command = None
         cwd = APP_DIR
 
+        launch_env = clean_env
         if launcher_type == "love":
             love_bin = _os.path.join(APP_DIR, "lib", "love")
             if not _os.path.isfile(love_bin):
@@ -6525,6 +6526,11 @@ class App(object):
                 self.notify("LÖVE binary not found", tool.get("name", tool_id),
                             "warning")
                 return
+            love_paths = [_os.path.join(APP_DIR, "lib")]
+            if clean_env.get("LD_LIBRARY_PATH"):
+                love_paths.append(clean_env["LD_LIBRARY_PATH"])
+            launch_env = clean_env.copy()
+            launch_env["LD_LIBRARY_PATH"] = _os.pathsep.join(love_paths)
             command = [love_bin, full_path]
         elif launcher_type == "portable-voidcast":
             launch_base = (_os.path.dirname(APP_DIR)
@@ -6553,7 +6559,7 @@ class App(object):
 
         try:
             _subprocess.Popen(
-                command, cwd=cwd, env=clean_env, start_new_session=True
+                command, cwd=cwd, env=launch_env, start_new_session=True
             )
             self.notify("Launching", tool.get("name", tool_id), "success")
         except Exception as exc:
