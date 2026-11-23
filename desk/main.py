@@ -203,7 +203,7 @@ import intro           # noqa: E402
 import jsmap           # noqa: E402
 import shell           # noqa: E402
 import sysinfo         # noqa: E402
-from desk.muos_video import init_muos_surface, poll_muos_events  # noqa: E402
+from desk.muos_video import init_muos_display, poll_muos_events  # noqa: E402
 from desk.qwasar.nexus_adapter import (
     compose_nexus_profile,
     next_enabled_ring,
@@ -2189,8 +2189,11 @@ class App(object):
         # frames through fbdisplay without initializing SDL's display driver.
         if os.environ.get("VOIDDESK_DIRECT_FB") == "1":
             pygame.font.init()
-            self.surface = init_muos_surface(pygame, fbdisplay, (W, H))
-            print("[muOS] direct framebuffer active: %s" % fbdisplay.info())
+            self.surface, video_path = init_muos_display(
+                pygame, fbdisplay, (W, H)
+            )
+            print("[muOS] %s framebuffer active: %s" %
+                  (video_path, fbdisplay.info()))
         else:
             try:
                 pygame.display.init()

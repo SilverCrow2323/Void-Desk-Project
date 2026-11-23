@@ -30,3 +30,32 @@ def poll_muos_events(pygame, direct_fb=False):
         return pygame.event.get()
     except pygame.error:
         return ()
+
+
+
+def init_muos_display(pygame, fbdisplay, size):
+    """Prefer direct framebuffer; fall back to verified SDL+fbdisplay.
+
+    The fallback preserves compatibility with firmware builds where direct
+    Surface presentation is unavailable but SDL's dummy backend still works.
+    Both paths require a successful framebuffer attach/write.
+    """
+    try:
+        return init_muos_surface(pygame, fbdisplay, size), "direct"
+    except Exception as direct_error:
+        import os
+
+        os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+        os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+        try:
+            pygame.display.init()
+            surface = pygame.display.set_mode(size)
+            if not fbdisplay.attach(surface):
+                raise RuntimeError(fbdisplay.info())
+            return surface, "SDL fallback"
+        except Exception as fallback_error:
+            raise RuntimeError(
+                "muOS framebuffer initialization failed; "
+                "direct path: %s; SDL fallback: %s"
+                % (str(direct_error)[:180], str(fallback_error)[:180])
+            ) from fallback_error

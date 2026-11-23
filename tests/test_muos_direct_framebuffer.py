@@ -82,3 +82,67 @@ def test_desktop_mode_keeps_sdl_event_queue():
     pygame = _FakePygame()
     assert poll_muos_events(pygame, direct_fb=False) == ("event",)
     assert pygame.event.called
+
+
+
+class _FallbackDisplay:
+    def __init__(self):
+        self.initialized = False
+        self.surface = None
+
+    def init(self):
+        self.initialized = True
+
+    def set_mode(self, size):
+        if not self.initialized:
+            raise AssertionError("SDL display must be initialized first")
+        self.surface = _FakeSurface(size)
+        return self.surface
+
+
+class _FallbackPygame(_FakePygame):
+    def __init__(self):
+        super().__init__()
+        self.display = _FallbackDisplay()
+
+
+class _SequencedFramebuffer:
+    def __init__(self, outcomes):
+        self.outcomes = list(outcomes)
+        self.calls = 0
+
+    def attach(self, surface):
+        self.calls += 1
+        return self.outcomes.pop(0)
+
+    def info(self):
+        return "fb: simulated"
+
+
+def test_muos_display_falls_back_only_after_direct_path_failure():
+    from desk.muos_video import init_muos_display
+
+    pygame = _FallbackPygame()
+    fb = _SequencedFramebuffer([False, True])
+
+    surface, mode = init_muos_display(pygame, fb, (640, 480))
+
+    assert mode == "SDL fallback"
+    assert pygame.display.initialized
+    assert surface is pygame.display.surface
+    assert fb.calls == 2
+
+
+def test_muos_display_fails_if_both_verified_framebuffer_paths_fail():
+    from desk.muos_video import init_muos_display
+
+    pygame = _FallbackPygame()
+    fb = _SequencedFramebuffer([False, False])
+
+    try:
+        init_muos_display(pygame, fb, (640, 480))
+    except RuntimeError as exc:
+        assert "direct path" in str(exc)
+        assert "SDL fallback" in str(exc)
+    else:
+        raise AssertionError("expected both framebuffer paths to fail")
