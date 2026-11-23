@@ -77,7 +77,7 @@ def main():
         scr.draw()
         subprocess.call(["chroot", MNT, "/bin/bash", "-c",
                          "DEBIAN_FRONTEND=noninteractive apt-get "
-                         " -o Acquire::ForceIPv4=true "
+                         "-o Acquire::ForceIPv4=true "
                         "update"],
                         stdout=log, stderr=log)
         rc = xi.apt_with_progress([], scr, log, upgrade=True)
