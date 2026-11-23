@@ -130,7 +130,7 @@ def test_community_browser_launch_uses_clean_environment(monkeypatch, tmp_path):
     app = FakeApp(tmp_path)
     launched = {}
 
-    monkeypatch.setattr(shutil, "which", lambda name: "chromium")
+    monkeypatch.setattr(shutil, "which", lambda name: name if name == "chromium" else None)
     monkeypatch.setattr(
         subprocess, "Popen",
         lambda args, **kwargs: launched.update(args=args, kwargs=kwargs),
