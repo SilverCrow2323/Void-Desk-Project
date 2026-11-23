@@ -70,7 +70,7 @@ Do not claim secure pairing, central authentication, SPDW Hub or remote control 
 - [x] Selectively integrate the Pygame NEXUS, framebuffer and bootstrap work on current main.
 - [x] Preserve the firmware-aware Andromeda/non-Andromeda input mapping.
 - [x] Close the superseded Pygame stack branches #66, #86 and #88 with explicit replacement references.
-- [ ] Decide whether PR #89 is deferred or integrated in a later scope; do not silently include it.
+- [x] Explicitly defer PR #89 to a later scope; it is not part of the v10.5.4 candidate.
 
 ### G1 — Source and automated tests
 

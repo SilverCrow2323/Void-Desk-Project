@@ -30,12 +30,12 @@ Void Desk is a controller-first handheld environment in the wider **QWASAR-Env**
 | Publish or maintain the portal | [Field Portal publishing guide](docs/FIELD_PORTAL_PUBLISHING.md) |
 | Understand the project | [Documentation home](docs/README.md) |
 | Check release readiness | [10.5.4 consolidation gate](docs/RELEASE_READINESS_10.5.4.md) |
-| [H700 physical smoke test](docs/H700_RELEASE_SMOKE_TEST.md) |
-| [Candidate changelog](CHANGELOG.md) |
+| Run the physical qualification | [H700 smoke test](docs/H700_RELEASE_SMOKE_TEST.md) |
+| Review the candidate changes | [Candidate changelog](CHANGELOG.md) |
 | Quick answers and first steps | [Wiki FAQ](wiki-source/FAQ.md) · [What is Void Desk?](wiki-source/What-is-Void-Desk.md) · [First steps](wiki-source/First-steps.md) |
 | Test the desktop version on Linux | [PC testing guide](wiki-source/Desktop-PC-testing.md) · [PC bundle notes](packaging/pc/README.md) |
 | Install the latest published package | [Installation guide](wiki-source/Installation-muOS-Andromeda.md) · [Releases](https://github.com/SilverCrow2323/Void-Desk-Project/releases) |
-| Explore the current v10.5.4 candidate | [Candidate changelog](CHANGELOG.md) · [H700 physical smoke test](docs/H700_RELEASE_SMOKE_TEST.md) |
+
 | Explore the v12 direction | [v12 blueprint](docs/V12_BLUEPRINT.md) |
 | Check firmware and controller compatibility | [muOS compatibility matrix](docs/MUOS_FIRMWARE_COMPATIBILITY.md) |
 | Understand runtime and source layout | [Architecture](docs/ARCHITECTURE.md) |
