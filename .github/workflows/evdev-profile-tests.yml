@@ -1,0 +1,26 @@
+name: Andromeda evdev profile regression
+on:
+  push:
+    branches: [main, "feat/**"]
+    paths:
+      - "desk/evinput.py"
+      - "tests/test_evinput_profile.py"
+      - ".github/workflows/evdev-profile-tests.yml"
+  pull_request:
+    paths:
+      - "desk/evinput.py"
+      - "tests/test_evinput_profile.py"
+      - ".github/workflows/evdev-profile-tests.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  input-profiles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Test firmware-aware button maps
+        run: python3 tests/test_evinput_profile.py
