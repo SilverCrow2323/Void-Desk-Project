@@ -20,6 +20,10 @@ REQUIRED_FILES = (
 
 AARCH64_MACHINE = 183
 MIN_LOVE_RUNTIME_BYTES = 1024 * 1024
+MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
+MAX_EXPANDED_BYTES = 1024 * 1024 * 1024
+MAX_MEMBER_BYTES = 256 * 1024 * 1024
+MAX_RUNTIME_MEMBER_BYTES = 64 * 1024 * 1024
 
 
 def _validate_aarch64_elf(data: bytes, label: str, errors: list[str]):
@@ -43,6 +47,11 @@ def validate_archive(archive: str | Path) -> list[str]:
     errors: list[str] = []
     if not path.is_file():
         return ["archive does not exist or is not a regular file"]
+    try:
+        if path.stat().st_size > MAX_ARCHIVE_BYTES:
+            return ["archive exceeds the 512 MiB compressed package limit"]
+    except OSError as exc:
+        return ["cannot stat archive: %s" % exc]
 
     try:
         with zipfile.ZipFile(path) as package:
@@ -53,6 +62,7 @@ def validate_archive(archive: str | Path) -> list[str]:
             seen: set[str] = set()
             files: set[str] = set()
             top_levels: set[str] = set()
+            expanded_bytes = 0
 
             for info in infos:
                 name = info.filename
@@ -64,6 +74,12 @@ def validate_archive(archive: str | Path) -> list[str]:
                     errors.append("unsafe archive member path: %s" % name)
                     continue
                 normalized = str(member)
+                if info.file_size > MAX_MEMBER_BYTES:
+                    errors.append("archive member exceeds 256 MiB: %s" % normalized)
+                expanded_bytes += info.file_size
+                if expanded_bytes > MAX_EXPANDED_BYTES:
+                    errors.append("archive expanded contents exceed the 1 GiB package budget")
+                    break
                 if normalized in seen:
                     errors.append("duplicate archive member: %s" % normalized)
                     continue
@@ -104,9 +120,22 @@ def validate_archive(archive: str | Path) -> list[str]:
                 "Void-Desk/lib/libluajit-5.1.so.2",
             )
             runtime_data = {}
+            info_by_name = {item.filename: item for item in infos}
             for runtime_path in runtime_paths:
                 if runtime_path in files:
-                    runtime_data[runtime_path] = package.read(runtime_path)
+                    info = info_by_name[runtime_path]
+                    if info.file_size > MAX_RUNTIME_MEMBER_BYTES:
+                        errors.append("runtime member exceeds 64 MiB: %s" % runtime_path)
+                        continue
+                    try:
+                        with package.open(info, "r") as stream:
+                            data = stream.read(MAX_RUNTIME_MEMBER_BYTES + 1)
+                        if len(data) > MAX_RUNTIME_MEMBER_BYTES or len(data) != info.file_size:
+                            errors.append("runtime member size is inconsistent or exceeds 64 MiB: %s" % runtime_path)
+                            continue
+                        runtime_data[runtime_path] = data
+                    except (OSError, RuntimeError, zipfile.BadZipFile) as exc:
+                        errors.append("cannot read runtime member %s: %s" % (runtime_path, exc))
 
             loader_path = "Void-Desk/lib/love"
             love_path = "Void-Desk/lib/liblove-11.5.so"
