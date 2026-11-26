@@ -23,4 +23,4 @@ jobs:
         with:
           python-version: "3.11"
       - name: Test firmware-aware button maps
-        run: python3 -m pytest -q tests/test_evinput_profile.py
+        run: python3 tests/test_evinput_profile.py
