@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ["main", "codex/**"]
+    branches: ["main", "codex/**", "feat/**"]
   pull_request:
     # Avoid rerunning CI for label, assignment, draft-conversion and review-request events.
     types: [opened, synchronize, reopened, ready_for_review]
