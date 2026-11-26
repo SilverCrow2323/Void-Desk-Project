@@ -76,7 +76,8 @@ def test_rejects_duplicate_archive_members(tmp_path):
     archive = tmp_path / "duplicate.muxapp"
     with zipfile.ZipFile(archive, "w") as package:
         for name, (payload, mode) in valid_members().items():
-            info = zipfile.ZipInfo(name); info.external_attr = (stat.S_IFREG | mode) << 16
+            info = zipfile.ZipInfo(name)
+            info.external_attr = (stat.S_IFREG | mode) << 16
             package.writestr(info, payload)
         info = zipfile.ZipInfo("Void-Desk/voiddesk.py")
         info.external_attr = (stat.S_IFREG | 0o100644) << 16
