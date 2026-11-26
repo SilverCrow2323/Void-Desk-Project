@@ -100,3 +100,14 @@ def test_muxapp_rejects_non_executable_love_loader(tmp_path):
     make_archive(archive, valid_members(), executable_loader=False)
     errors = load_validator().validate_archive(archive)
     assert any("LÖVE launcher is not executable" in e for e in errors)
+
+def test_muxapp_rejects_runtime_member_over_expansion_limit(tmp_path):
+    archive = tmp_path / "oversized-runtime.muxapp"
+    members = valid_members()
+    members["Void-Desk/lib/liblove-11.5.so"] = elf64_aarch64(
+        b"X" * (64 * 1024 * 1024 + 1)
+    )
+    make_archive(archive, members)
+    errors = load_validator().validate_archive(archive)
+    assert any("exceeds 256 MiB" in e or "runtime member exceeds 64 MiB" in e for e in errors)
+
