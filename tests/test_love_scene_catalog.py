@@ -121,7 +121,7 @@ def test_all_explicit_hub_scene_pushes_resolve_to_real_scenes():
     for source_path in (LOVE / "scenes").glob("hub_*.lua"):
         source = source_path.read_text(encoding="utf-8")
         for scene_name in re.findall(
-            r'sm\\.push\\(\\s*["\\']([a-zA-Z0-9_]+)["\\']',
+            r'sm\.push\(\s*["\']([a-zA-Z0-9_]+)["\']',
             source,
         ):
             if not (LOVE / "scenes" / f"{scene_name}.lua").is_file():
