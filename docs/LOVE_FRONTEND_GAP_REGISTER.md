@@ -102,5 +102,5 @@ reference bridge:
 Escape is deliberately **B/back**, not Menu; M remains the Menu key. The
 contract is locked by `tests/test_love_input_map.lua` and runs in the native
 LÖVE integration CI. This is a desktop keyboard contract, not proof of
-handheld controller behavior; the RG35XX-H input journey still requires
-physical validation.
+handheld controller behavior; the complete controller journey still requires
+physical RG35XX-H hardware validation.
