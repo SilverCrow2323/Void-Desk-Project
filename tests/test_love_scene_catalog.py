@@ -114,3 +114,24 @@ def test_media_vault_subroutes_resolve_and_use_the_registered_mainline_contract(
             assert f'bridge.call("{command}"' not in source, (
                 f"{scene_name} uses obsolete bridge API name {command}"
             )
+
+
+def test_all_explicit_hub_scene_pushes_resolve_to_real_scenes():
+    missing = set()
+    for source_path in (LOVE / "scenes").glob("hub_*.lua"):
+        source = source_path.read_text(encoding="utf-8")
+        for scene_name in re.findall(
+            r'sm\\.push\\(\\s*["\\']([a-zA-Z0-9_]+)["\\']',
+            source,
+        ):
+            if not (LOVE / "scenes" / f"{scene_name}.lua").is_file():
+                missing.add(f"{source_path.name} -> {scene_name}")
+    assert not missing, "hub routes without scene modules: " + ", ".join(sorted(missing))
+
+
+def test_visible_media_vault_destinations_are_not_replaced_by_stub_routes():
+    home = (LOVE / "scenes" / "hub_media.lua").read_text(encoding="utf-8")
+    for destination in ("void_radio", "media_library", "hub_iptv"):
+        assert f'sm.push("{destination}", {{}})' in home
+        assert (LOVE / "scenes" / f"{destination}.lua").is_file()
+    assert 'sm.push("hub_stub", {})' not in home
