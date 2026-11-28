@@ -104,3 +104,19 @@ contract is locked by `tests/test_love_input_map.lua` and runs in the native
 LÖVE integration CI. This is a desktop keyboard contract, not proof of
 handheld controller behavior; the RG35XX-H input journey still requires
 physical validation.
+
+
+## Automated hub-route parity gate — 2026-11-28
+
+The regression suite now checks every literal `sm.push("scene", {})` route
+inside `love/scenes/hub_*.lua` against an existing scene module. This closes
+a static navigation gap: a visible hub action cannot silently point to a
+missing LÖVE scene file.
+
+The MEDIA VAULT contract is also pinned to its three real destinations:
+`void_radio`, `media_library` and `hub_iptv`. The test rejects a return to
+the generic `hub_stub` route for this hub.
+
+These checks prove source-level route resolution only. They do not prove
+controller interaction, playback, service availability or H700 hardware
+behaviour; those remain in the device-validation gate above.
